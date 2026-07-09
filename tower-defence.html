@@ -23,6 +23,7 @@
   header{display:flex; align-items:center; justify-content:space-between; padding:12px 18px; background:linear-gradient(90deg,var(--leaf),#6ecf57); color:white;}
   header h1{margin:0; font-size:18px;}
   header .counters{display:flex; gap:12px; align-items:center; font-weight:700; font-size:14px;}
+  .coin-badge{background:rgba(255,255,255,0.2); padding:4px 8px; border-radius:999px; border:1px solid rgba(255,255,255,0.25); font-size:12px; margin-top:18px;}
   main{display:flex; gap:12px; padding:12px;}
   /* canvas area */
   .game-area{flex:1; display:flex; flex-direction:column; gap:10px; align-items:center; position:relative;}
@@ -62,7 +63,8 @@
 <div class="wrap" id="root" style="position:relative;">
   <header>
     <h1>Garden Gnomes — Defend the Cabbage</h1>
-    <div class="counters">
+    <div class="counters" style="align-items:flex-end;">
+      <div class="coin-badge" id="headerCoins">Coins: 32</div>
       <div id="waveDisplay">Wave: 0 / 10</div>
       <div id="coinsDisplay">Coins: 0</div>
       <div id="livesDisplay">Slugs reached: 0 / 10</div>
@@ -282,7 +284,7 @@ const pathCells = [
 let towers = [];
 let slugs = [];
 let projectiles = [];
-let coins = 50;
+let coins = 12;
 let wave = 0;
 let slugReached = 0;
 let maxAllowedReached = 10;
@@ -294,7 +296,7 @@ let enemiesToSpawn = 0;
 let waveTransitionTimer = 0;
 let waitingForNextWave = false;
 let saltCooldown = 0;
-const SALT_COOLDOWN_TIME = 20000;
+const SALT_COOLDOWN_TIME = 15000;
 let saltReady = true;
 let selectedTowerType = 'seedling';
 
@@ -324,10 +326,10 @@ const enemyDefinitions = {
 
 function pickEnemyType(waveIndex){
   const roll = Math.random();
-  if (waveIndex >= 10 && roll < 0.12) return 'bossSlug';
-  if (waveIndex >= 10 && roll < 0.24) return 'tank';
-  if (waveIndex >= 6 && roll < 0.32) return 'snail';
-  if (waveIndex >= 3 && roll < 0.28) return 'crawler';
+  if (waveIndex >= 8 && roll < 0.18) return 'bossSlug';
+  if (waveIndex >= 6 && roll < 0.32) return 'tank';
+  if (waveIndex >= 4 && roll < 0.40) return 'snail';
+  if (waveIndex >= 2 && roll < 0.30) return 'crawler';
   return 'slug';
 }
 
@@ -353,7 +355,7 @@ function startGame(){
   towers = [];
   slugs = [];
   projectiles = [];
-  coins = 50;
+  coins = 12;
   wave = 0;
   slugReached = 0;
   running = true;
@@ -370,7 +372,7 @@ function resetGame(){
   towers = [];
   slugs = [];
   projectiles = [];
-  coins = 50;
+  coins = 12;
   wave = 0;
   slugReached = 0;
   saltCooldown = 0;
@@ -386,7 +388,7 @@ function resetGame(){
 
 function spawnNextWave(){
   wave += 1;
-  enemiesToSpawn = Math.min(220, 24 + wave * 10 + Math.floor(wave / 2) * 8);
+  enemiesToSpawn = Math.min(420, 48 + wave * 24 + Math.floor(wave / 2) * 18);
   spawnTimer = 0;
   waitingForNextWave = false;
   waveTransitionTimer = 0;
@@ -396,9 +398,9 @@ function spawnNextWave(){
 function spawnSlug(){
   const type = pickEnemyType(wave);
   const def = enemyDefinitions[type];
-  const hp = Math.round(def.baseHp * (1 + wave * 0.16));
-  const spd = def.baseSpd * (1 + wave * 0.03);
-  const armor = def.baseArmor + wave * 0.01;
+  const hp = Math.round(def.baseHp * (1 + wave * 0.42));
+  const spd = def.baseSpd * (1 + wave * 0.09);
+  const armor = def.baseArmor + wave * 0.03;
   const startCell = pathCells[1];
   const p = gridToPixel(startCell.c, startCell.r);
   const slug = {
@@ -450,7 +452,7 @@ function towerFire(tower, dt){
 
 function useSalt(){
   if (!saltReady) return;
-  const saltDamage = 24 + wave * 8;
+  const saltDamage = 36 + wave * 18;
   for (const s of slugs){
     if (!s.alive) continue;
     s.hp -= saltDamage * (1 - s.armor);
@@ -474,7 +476,7 @@ function loop(now){
 
   if (enemiesToSpawn > 0){
     spawnTimer -= dt;
-    const spawnDelay = Math.max(120, 560 - wave * 24);
+    const spawnDelay = Math.max(44, 360 - wave * 42);
     if (spawnTimer <= 0){
       spawnSlug();
       enemiesToSpawn--;
@@ -800,6 +802,7 @@ function updateUI(){
   waveDisplay.textContent = `Wave: ${wave} (∞)`;
   coinsDisplay.textContent = `Coins: ${coins}`;
   document.getElementById('coinDisplay').textContent = `Coins: ${coins}`;
+  document.getElementById('headerCoins').textContent = `Coins: ${coins}`;
   livesDisplay.textContent = `Slugs reached: ${slugReached} / ${maxAllowedReached}`;
   const saltTxt = document.getElementById('saltCooldown');
   const useSaltBtn = document.getElementById('useSaltBtn');
