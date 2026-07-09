@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Garden Gnomes — Tower Defense</title>
+<style>
+  /* ---------- Basic layout ---------- */
+  :root{
+    --soil:#5C4033;
+    --leaf:#4C9A2A;
+    --slug:#8E6FB8;
+    --card:#fff8f2;
+    --muted:#5b6b75;
+    --accent:#f2c94c;
+    --danger:#d9534f;
+    --glass: rgba(255,255,255,0.85);
+    --radius:12px;
+  }
+  html,body{height:100%; margin:0; font-family:Inter,ui-sans-serif,system-ui,Arial;}
+  body{background:radial-gradient(circle at top left,#fef9e8 0%,#e8f4df 45%,#dce7c8 100%); color:#142029; display:flex; align-items:center; justify-content:center; padding:12px;}
+  .wrap{width:100%; max-width:980px; background:linear-gradient(135deg,rgba(255,255,255,0.97),rgba(255,250,242,0.95)); border-radius:16px; box-shadow:0 18px 44px rgba(0,0,0,0.16); overflow:hidden; border:1px solid rgba(92,64,51,0.12);}
+  header{display:flex; align-items:center; justify-content:space-between; padding:12px 18px; background:linear-gradient(90deg,var(--leaf),#6ecf57); color:white;}
+  header h1{margin:0; font-size:18px;}
+  header .counters{display:flex; gap:12px; align-items:center; font-weight:700; font-size:14px;}
+  main{display:flex; gap:12px; padding:12px;}
+  /* canvas area */
+  .game-area{flex:1; display:flex; flex-direction:column; gap:10px; align-items:center; position:relative;}
+  .top-bar{position:absolute; top:10px; left:10px; right:10px; z-index:20; display:flex; justify-content:flex-end; pointer-events:none;}
+  .coin-pill{pointer-events:auto; background:linear-gradient(135deg,rgba(255,245,175,0.98),rgba(245,158,11,0.95)); color:#3f2b00; padding:8px 12px; border-radius:999px; font-weight:900; box-shadow:0 8px 20px rgba(20,30,40,0.16); border:1px solid rgba(120,53,15,0.2);}
+  .shop-overlay{position:absolute; bottom:8px; left:8px; right:8px; z-index:20; background:linear-gradient(135deg,rgba(255,248,242,0.98),rgba(254,244,232,0.94)); border:1px solid rgba(92,64,51,0.16); border-radius:14px; padding:8px 10px; box-shadow:0 12px 24px rgba(20,30,40,0.14); backdrop-filter:blur(8px); max-width:720px; margin:0 auto;}
+  .shop-header{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  .shop-overlay .tower-list{display:grid; grid-template-columns:repeat(auto-fit,minmax(118px,1fr)); gap:6px; margin-top:6px; max-height:190px; overflow:auto;}
+  canvas{background:linear-gradient(180deg,#f8f4e4,#dfeccf); border-radius:12px; box-shadow:inset 0 0 0 2px rgba(255,255,255,0.8), 0 14px 34px rgba(20,30,40,0.12); border:3px solid #d4b387;}
+  /* side panel for buttons and info */
+  .side{width:260px; padding:8px; display:flex; flex-direction:column; gap:10px;}
+  .panel{background:white; border-radius:10px; padding:10px; box-shadow:0 6px 16px rgba(20,30,40,0.04);}
+  .btn{display:inline-block; padding:8px 12px; border-radius:8px; background:var(--accent); color:#123; font-weight:700; text-align:center; border:none; cursor:pointer;}
+  .btn.ghost{background:transparent; border:2px solid var(--accent); color:var(--accent);}
+  .small{font-size:13px; color:var(--muted);}
+  .tower-list{display:flex; gap:8px; flex-wrap:wrap;}
+  .tower-card{background:linear-gradient(180deg,#fff,#fbfbfb); padding:6px; border-radius:10px; width:100%; display:flex; gap:6px; align-items:flex-start; justify-content:space-between; cursor:pointer; border:2px solid transparent; min-height:70px;}
+  .tower-card.active{border-color:var(--accent); box-shadow:0 0 0 2px rgba(242,201,76,0.18);} 
+  .tower-card .small{font-size:10px; line-height:1.25;}
+  .salt-btn{background:linear-gradient(90deg,#fff176,#f59e0b); color:#123; font-weight:900; border-radius:10px; padding:10px; border:0; cursor:pointer;}
+  .muted{color:var(--muted); font-size:13px;}
+  footer{padding:10px; text-align:center; font-size:12px; color:var(--muted);}
+  /* Start / overlays */
+  .overlay{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(10,20,15,0.36), rgba(255,255,255,0.2)); z-index:40;}
+  .card-center{background:white; border-radius:12px; padding:18px; width:92%; max-width:520px; box-shadow:0 18px 40px rgba(20,30,40,0.18); text-align:left;}
+  .center-title{font-size:20px; margin:0 0 8px 0;}
+  .controls{display:grid; gap:6px; margin:8px 0;}
+  .row{display:flex; gap:8px;}
+  /* responsive */
+  @media(max-width:820px){
+    main{flex-direction:column;}
+    .side{width:100%;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="root" style="position:relative;">
+  <header>
+    <h1>Garden Gnomes — Defend the Cabbage</h1>
+    <div class="counters">
+      <div id="waveDisplay">Wave: 0 / 10</div>
+      <div id="coinsDisplay">Coins: 0</div>
+      <div id="livesDisplay">Slugs reached: 0 / 10</div>
+    </div>
+  </header>
+
+  <main>
+    <div class="game-area">
+      <div class="top-bar">
+        <div class="coin-pill" id="coinDisplay">Coins: 50</div>
+      </div>
+      <div class="shop-overlay">
+        <div class="shop-header">
+          <div>
+            <div style="font-weight:800">Shop</div>
+            <div class="small">Select a gnome, then tap empty soil to place it.</div>
+          </div>
+          <div class="small">Start coins: 50</div>
+        </div>
+        <div class="tower-list" id="towerList" style="margin-top:8px;">
+          <div class="tower-card active" data-tower-type="seedling" id="seedlingCard">
+            <div>
+              <div style="font-weight:800">Seedling</div>
+              <div class="small">Cheap starter gnome.</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-weight:900; color:var(--leaf)">30</div>
+            </div>
+          </div>
+          <div class="tower-card" data-tower-type="tiller" id="tillerCard">
+            <div>
+              <div style="font-weight:800">Tiller</div>
+              <div class="small">Balanced damage.</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-weight:900; color:var(--accent)">45</div>
+            </div>
+          </div>
+          <div class="tower-card" data-tower-type="sprout" id="sproutCard">
+            <div>
+              <div style="font-weight:800">Sprout</div>
+              <div class="small">Long-range sniper.</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-weight:900; color:#4f7cff">60</div>
+            </div>
+          </div>
+          <div class="tower-card" data-tower-type="mulch" id="mulchCard">
+            <div>
+              <div style="font-weight:800">Mulch</div>
+              <div class="small">Burst damage with splash.</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-weight:900; color:#8b5cf6">70</div>
+            </div>
+          </div>
+          <div class="tower-card" data-tower-type="rake" id="rakeCard">
+            <div>
+              <div style="font-weight:800">Rake</div>
+              <div class="small">Rapid-fire harasser.</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-weight:900; color:#f97316">55</div>
+            </div>
+          </div>
+          <div class="tower-card" data-tower-type="lantern" id="lanternCard">
+            <div>
+              <div style="font-weight:800">Lantern</div>
+              <div class="small">Bright and deadly.</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-weight:900; color:#facc15">78</div>
+            </div>
+          </div>
+          <div class="tower-card" data-tower-type="moss" id="mossCard">
+            <div>
+              <div style="font-weight:800">Moss</div>
+              <div class="small">Steady front-line support.</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-weight:900; color:#16a34a">84</div>
+            </div>
+          </div>
+          <div class="tower-card" data-tower-type="pebble" id="pebbleCard">
+            <div>
+              <div style="font-weight:800">Pebble</div>
+              <div class="small">Reliable mid-range hitter.</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-weight:900; color:#64748b">48</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Canvas draws the map, towers, slugs, projectile effects -->
+      <canvas id="gameCanvas" width="760" height="520" style="touch-action:none;"></canvas>
+
+      <div style="display:flex; gap:10px; width:90%; justify-content:center;">
+        <button class="btn" id="startBtn">Start Game</button>
+        <button class="btn ghost" id="pauseBtn">Pause</button>
+        <button class="btn ghost" id="resetBtn">Reset</button>
+        <button class="salt-btn" id="saltBtn">SALT STORM (S)</button>
+      </div>
+      <div class="small">Controls: Tap an empty tile to place gnome (cost). Tap a gnome to upgrade. Use S or the Salt Storm button to damage all slugs (20s cooldown).</div>
+    </div>
+
+    <aside class="side">
+      <div class="panel">
+        <div style="font-weight:800">Special</div>
+        <div class="small" style="margin:8px 0">Salt Storm damages every slug on screen. Cooldown 20s. Use it wisely!</div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn" id="useSaltBtn">Use Salt</button>
+          <div id="saltCooldown" class="muted">Ready</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div style="font-weight:800">Tips</div>
+        <ul class="small" style="margin:8px 0 0 18px;">
+          <li>Place gnomes near the path corners.</li>
+          <li>Upgrading early is strong but costs coins.</li>
+          <li>Salt Storm is great for big slug crowds.</li>
+        </ul>
+      </div>
+    </aside>
+  </main>
+
+  <footer>Made for learning — no external assets. Works offline.</footer>
+
+  <!-- Start / Game Over / Win overlays -->
+  <div class="overlay" id="overlay" style="display:flex;">
+    <div class="card-center" id="startCard">
+      <h2 class="center-title">Garden Gnomes</h2>
+      <p>Hello, Damon (黄沐晨)! Protect your cabbage from endless waves of slugs, beetles, and tanky pests.</p>
+      <div style="font-weight:800; margin-top:8px;">Controls</div>
+      <div class="controls">
+        <div>• Select a gnome type on the right, then tap empty soil to place it</div>
+        <div>• Tap an existing gnome to upgrade it and sharpen its attacks</div>
+        <div>• S key or Salt Storm button = damage all enemies on screen (20s cooldown)</div>
+        <div>• The waves keep going — each one gets harder and more crowded</div>
+      </div>
+      <div style="margin-top:10px; display:flex; gap:8px;">
+        <button class="btn" id="overlayStart">Start</button>
+        <button class="btn ghost" id="overlayHow">How it works</button>
+      </div>
+      <p class="small" style="margin-top:6px">Difficulty: ENDLESS — stronger enemies, bigger swarms, and no final wave to beat.</p>
+    </div>
+
+    <div class="card-center" id="gameOverCard" style="display:none;">
+      <h2 class="center-title">Game Over</h2>
+      <p id="gameOverText">The slugs reached your cabbage.</p>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button class="btn" id="retryBtn">Try Again</button>
+        <button class="btn ghost" id="spectateBtn">View</button>
+      </div>
+    </div>
+
+    <div class="card-center" id="winCard" style="display:none;">
+      <h2 class="center-title">You Win!</h2>
+      <p>All 10 waves defended. Great gnome work!</p>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button class="btn" id="playAgainBtn">Play Again</button>
+        <button class="btn ghost" id="downloadScore">Share Score</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/*
+  Garden Gnomes — Single-file tower defense
+  Expanded with multiple gnome units, endless waves, and varied enemies.
+*/
+
+/* ======= Utility & audio setup ======= */
+const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
+function beep(freq=440, type='sine', duration=0.08, gain=0.06){
+  const o = ctxAudio.createOscillator();
+  const g = ctxAudio.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.value = gain;
+  o.connect(g); g.connect(ctxAudio.destination);
+  o.start();
+  o.stop(ctxAudio.currentTime + duration);
+}
+function hitSound(){ beep(880,'triangle',0.06,0.06); }
+function shootSound(){ beep(520,'square',0.04,0.04); }
+function winSound(){ beep(880,'sine',0.16,0.12); beep(1100,'sine',0.12,0.08); }
+function loseSound(){ beep(200,'sawtooth',0.36,0.16); }
+
+/* ======= Game variables & DOM ======= */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let W = canvas.width, H = canvas.height;
+
+const waveDisplay = document.getElementById('waveDisplay');
+const coinsDisplay = document.getElementById('coinsDisplay');
+const livesDisplay = document.getElementById('livesDisplay');
+const overlay = document.getElementById('overlay');
+const startCard = document.getElementById('startCard');
+const gameOverCard = document.getElementById('gameOverCard');
+const winCard = document.getElementById('winCard');
+
+const COLS = 10;
+const ROWS = 7;
+let cellW, cellH;
+
+const pathCells = [
+  {c: -1, r: 3},
+  {c:0,r:3},{c:1,r:3},{c:2,r:3},{c:2,r:2},{c:3,r:2},{c:3,r:1},
+  {c:4,r:1},{c:5,r:1},{c:5,r:2},{c:6,r:2},{c:6,r:3},{c:7,r:3},
+  {c:7,r:4},{c:8,r:4},{c:9,r:4},{c:10,r:4}
+];
+
+let towers = [];
+let slugs = [];
+let projectiles = [];
+let coins = 50;
+let wave = 0;
+let slugReached = 0;
+let maxAllowedReached = 10;
+let running = false;
+let paused = false;
+let lastTime = 0;
+let spawnTimer = 0;
+let enemiesToSpawn = 0;
+let waveTransitionTimer = 0;
+let waitingForNextWave = false;
+let saltCooldown = 0;
+const SALT_COOLDOWN_TIME = 20000;
+let saltReady = true;
+let selectedTowerType = 'seedling';
+
+const towerDefinitions = {
+  seedling: {name:'Seedling Gnome', cost:30, upgradeCost:25, baseDamage:15, fireRate:0.9, range:2.4, color:'#6ecf57'},
+  tiller: {name:'Tiller Gnome', cost:45, upgradeCost:28, baseDamage:24, fireRate:0.75, range:2.7, color:'#f59e0b'},
+  sprout: {name:'Sprout Gnome', cost:60, upgradeCost:32, baseDamage:34, fireRate:0.6, range:3.2, color:'#60a5fa'},
+  mulch: {name:'Mulch Gnome', cost:70, upgradeCost:34, baseDamage:22, fireRate:0.82, range:2.3, color:'#8b5cf6'},
+  rake: {name:'Rake Gnome', cost:55, upgradeCost:29, baseDamage:18, fireRate:1.1, range:2.0, color:'#f97316'},
+  lantern: {name:'Lantern Gnome', cost:78, upgradeCost:36, baseDamage:28, fireRate:0.68, range:3.4, color:'#facc15'},
+  moss: {name:'Moss Gnome', cost:84, upgradeCost:40, baseDamage:26, fireRate:0.72, range:2.9, color:'#16a34a'},
+  pebble: {name:'Pebble Gnome', cost:48, upgradeCost:26, baseDamage:17, fireRate:0.95, range:2.6, color:'#64748b'}
+};
+
+function createTower(type,c,r){
+  const def = towerDefinitions[type];
+  return {c,r,kind:type,level:1,fireTimer:0,fireRate:def.fireRate,baseDamage:def.baseDamage,range:def.range,color:def.color};
+}
+
+const enemyDefinitions = {
+  slug: {name:'Slug', baseHp:24, baseSpd:0.95, baseArmor:0.0, reward:5, color:'#8E6FB8'},
+  snail: {name:'Armored Snail', baseHp:40, baseSpd:0.82, baseArmor:0.12, reward:8, color:'#5a4a3b'},
+  crawler: {name:'Crawling Mite', baseHp:18, baseSpd:1.3, baseArmor:0.0, reward:4, color:'#e79e3b'},
+  tank: {name:'Tank Slug', baseHp:90, baseSpd:0.62, baseArmor:0.2, reward:12, color:'#4b5563'},
+  bossSlug: {name:'Boss Slug', baseHp:220, baseSpd:0.56, baseArmor:0.25, reward:24, color:'#3b0764'}
+};
+
+function pickEnemyType(waveIndex){
+  const roll = Math.random();
+  if (waveIndex >= 10 && roll < 0.12) return 'bossSlug';
+  if (waveIndex >= 10 && roll < 0.24) return 'tank';
+  if (waveIndex >= 6 && roll < 0.32) return 'snail';
+  if (waveIndex >= 3 && roll < 0.28) return 'crawler';
+  return 'slug';
+}
+
+function gridToPixel(c,r){
+  return {x: Math.round((c + 0.5) * cellW), y: Math.round((r + 0.5) * cellH)};
+}
+function clamp(a,min,max){ return Math.max(min, Math.min(max, a)); }
+
+function resizeCanvas(){
+  const parent = canvas.parentElement;
+  const maxW = Math.min(760, parent.clientWidth - 20);
+  const maxH = 520;
+  canvas.width = maxW;
+  canvas.height = maxH * 1;
+  W = canvas.width; H = canvas.height;
+  cellW = Math.floor(W / COLS);
+  cellH = Math.floor(H / ROWS);
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+function startGame(){
+  towers = [];
+  slugs = [];
+  projectiles = [];
+  coins = 50;
+  wave = 0;
+  slugReached = 0;
+  running = true;
+  paused = false;
+  spawnNextWave();
+  overlay.style.display = 'none';
+  lastTime = performance.now();
+  loop(lastTime);
+}
+
+function resetGame(){
+  running = false;
+  paused = false;
+  towers = [];
+  slugs = [];
+  projectiles = [];
+  coins = 50;
+  wave = 0;
+  slugReached = 0;
+  saltCooldown = 0;
+  saltReady = true;
+  waitingForNextWave = false;
+  waveTransitionTimer = 0;
+  updateUI();
+  overlay.style.display = 'flex';
+  startCard.style.display = 'block';
+  gameOverCard.style.display = 'none';
+  winCard.style.display = 'none';
+}
+
+function spawnNextWave(){
+  wave += 1;
+  enemiesToSpawn = Math.min(220, 24 + wave * 10 + Math.floor(wave / 2) * 8);
+  spawnTimer = 0;
+  waitingForNextWave = false;
+  waveTransitionTimer = 0;
+  updateUI();
+}
+
+function spawnSlug(){
+  const type = pickEnemyType(wave);
+  const def = enemyDefinitions[type];
+  const hp = Math.round(def.baseHp * (1 + wave * 0.16));
+  const spd = def.baseSpd * (1 + wave * 0.03);
+  const armor = def.baseArmor + wave * 0.01;
+  const startCell = pathCells[1];
+  const p = gridToPixel(startCell.c, startCell.r);
+  const slug = {
+    x: p.x - cellW,
+    y: p.y,
+    pathIndex: 1,
+    t: 0,
+    hp,
+    maxHp: hp,
+    spd: spd * 0.9,
+    armor,
+    alive: true,
+    reached: false,
+    type
+  };
+  slugs.push(slug);
+}
+
+function towerFire(tower, dt){
+  tower.fireTimer -= dt;
+  if (tower.fireTimer > 0) return;
+  const center = gridToPixel(tower.c, tower.r);
+  let target = null;
+  let bestDist = Infinity;
+  for (const s of slugs){
+    if (!s.alive) continue;
+    const dx = s.x - center.x;
+    const dy = s.y - center.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist <= tower.range * cellW && dist < bestDist){
+      bestDist = dist; target = s;
+    }
+  }
+  if (target){
+    shootSound();
+    const damage = tower.baseDamage * (1 + (tower.level - 1) * 0.4);
+    const applied = Math.max(1, Math.round(damage * (1 - target.armor)));
+    target.hp -= applied;
+    projectiles.push({x:center.x, y:center.y, tx:target.x, ty:target.y, life:200});
+    tower.fireTimer = tower.fireRate * 1000;
+    if (target.hp <= 0){
+      target.alive = false;
+      const reward = Math.max(3, Math.round(enemyDefinitions[target.type].reward + wave * 0.8));
+      coins += reward;
+      hitSound();
+    }
+  }
+}
+
+function useSalt(){
+  if (!saltReady) return;
+  const saltDamage = 24 + wave * 8;
+  for (const s of slugs){
+    if (!s.alive) continue;
+    s.hp -= saltDamage * (1 - s.armor);
+    if (s.hp <= 0){ s.alive = false; coins += Math.max(3, Math.round(s.maxHp / 18)); }
+  }
+  saltReady = false;
+  saltCooldown = SALT_COOLDOWN_TIME;
+  beep(840,'triangle',0.12,0.1);
+  updateUI();
+}
+
+function loop(now){
+  if (!running) return;
+  if (paused){
+    lastTime = now;
+    requestAnimationFrame(loop);
+    return;
+  }
+  const dt = Math.min(60, now - lastTime);
+  lastTime = now;
+
+  if (enemiesToSpawn > 0){
+    spawnTimer -= dt;
+    const spawnDelay = Math.max(120, 560 - wave * 24);
+    if (spawnTimer <= 0){
+      spawnSlug();
+      enemiesToSpawn--;
+      spawnTimer = spawnDelay;
+    }
+  } else if (slugs.filter(s => s.alive).length === 0){
+    if (!waitingForNextWave){
+      waitingForNextWave = true;
+      waveTransitionTimer = 900;
+    }
+    waveTransitionTimer -= dt;
+    if (waveTransitionTimer <= 0){
+      spawnNextWave();
+    }
+  }
+
+  updateSlugs(dt);
+  for (const t of towers) towerFire(t, dt);
+  for (const p of projectiles){ p.life -= dt; }
+  projectiles = projectiles.filter(p => p.life > 0);
+
+  if (!saltReady){
+    saltCooldown -= dt;
+    if (saltCooldown <= 0){ saltCooldown = 0; saltReady = true; }
+  }
+
+  updateUI();
+  render();
+  if (slugReached >= maxAllowedReached){
+    gameOver();
+    return;
+  }
+
+  requestAnimationFrame(loop);
+}
+
+function updateSlugs(dt){
+  const speedFactor = dt / 1000;
+  for (const s of slugs){
+    if (!s.alive || s.reached) continue;
+    const pi = Math.min(s.pathIndex, pathCells.length - 2);
+    const a = pathCells[pi];
+    const b = pathCells[pi + 1];
+    const aClamped = {c: clamp(a.c, 0, COLS - 1), r: clamp(a.r, 0, ROWS - 1)};
+    const bClamped = {c: clamp(b.c, 0, COLS - 1), r: clamp(b.r, 0, ROWS - 1)};
+    const pa = gridToPixel(aClamped.c, aClamped.r);
+    const pb = gridToPixel(bClamped.c, bClamped.r);
+    const dx = pb.x - pa.x;
+    const dy = pb.y - pa.y;
+    const segLen = Math.sqrt(dx * dx + dy * dy);
+    const move = s.spd * speedFactor * cellW;
+    const dT = segLen > 0 ? move / segLen : 1;
+    s.t += dT;
+    s.x = pa.x + (pb.x - pa.x) * s.t;
+    s.y = pa.y + (pb.y - pa.y) * s.t;
+    if (s.t >= 1){
+      s.pathIndex++;
+      s.t = 0;
+      if (s.pathIndex >= pathCells.length - 1){
+        s.reached = true;
+        s.alive = false;
+        slugReached++;
+        beep(220,'sawtooth',0.06,0.06);
+      }
+    }
+  }
+}
+
+function drawTowerSprite(t){
+  const p = gridToPixel(t.c, t.r);
+  ctx.save();
+  ctx.translate(p.x, p.y);
+
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = 'rgba(0,0,0,0.18)';
+  ctx.fillStyle = '#f7f3ea';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, cellW * 0.34, cellH * 0.34, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#d1b08a';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  const hatColor = t.kind === 'tiller' ? '#d97706' : t.kind === 'sprout' ? '#2563eb' : t.kind === 'mulch' ? '#8b5cf6' : t.kind === 'rake' ? '#f97316' : t.kind === 'lantern' ? '#facc15' : t.kind === 'moss' ? '#16a34a' : t.kind === 'pebble' ? '#64748b' : '#6ecf57';
+  ctx.fillStyle = hatColor;
+  ctx.beginPath();
+  ctx.moveTo(-12, -4);
+  ctx.quadraticCurveTo(0, -24, 14, -6);
+  ctx.lineTo(8, 2);
+  ctx.quadraticCurveTo(0, -10, -10, 2);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#2f241c';
+  ctx.fillRect(-5, 2, 3, 4);
+  ctx.fillRect(2, 2, 3, 4);
+
+  ctx.fillStyle = '#f6c';
+  ctx.fillRect(10, 8, 10, 8);
+  ctx.fillStyle = '#1f2937';
+  ctx.font = '10px sans-serif';
+  ctx.fillText('L' + t.level, 10, 16);
+
+  ctx.restore();
+}
+
+function drawEnemySprite(s){
+  const size = cellW * 0.26;
+  const color = enemyDefinitions[s.type].color;
+  ctx.save();
+
+  ctx.fillStyle = 'rgba(0,0,0,0.08)';
+  ctx.beginPath();
+  ctx.ellipse(s.x + 6, s.y + 10, cellW * 0.22, cellH * 0.14, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (s.type === 'crawler'){
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y, size * 0.72, size * 0.56, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff3b0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(s.x - 4, s.y - 4);
+    ctx.lineTo(s.x + 4, s.y - 4);
+    ctx.stroke();
+  } else if (s.type === 'bossSlug'){
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y, size * 1.24, size * 0.92, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(s.x - 5, s.y - 6, 4, 0, Math.PI * 2);
+    ctx.arc(s.x + 5, s.y - 6, 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#facc15';
+    ctx.fillRect(s.x - 8, s.y + 2, 16, 4);
+  } else if (s.type === 'snail'){
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y, size * 0.98, size * 0.74, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#f5f5dc';
+    ctx.beginPath();
+    ctx.arc(s.x - 4, s.y - 2, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#6b4f3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(s.x + 5, s.y + 3, 4, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (s.type === 'tank'){
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y, size * 1.12, size * 0.84, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#d1d5db';
+    ctx.fillRect(s.x - 7, s.y - 5, 14, 6);
+    ctx.strokeStyle = '#9ca3af';
+    ctx.strokeRect(s.x - 9, s.y - 7, 18, 10);
+  } else {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y, size, size * 0.72, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = '#2f1d2d';
+  ctx.fillRect(s.x - 6, s.y - 4, 3, 3);
+  ctx.fillRect(s.x + 3, s.y - 4, 3, 3);
+
+  const barW = cellW * 0.8;
+  const barH = 6;
+  const left = s.x - barW / 2;
+  ctx.fillStyle = 'rgba(0,0,0,0.16)';
+  ctx.fillRect(left, s.y - cellH * 0.36, barW, barH);
+  const hpPct = clamp(s.hp / s.maxHp, 0, 1);
+  ctx.fillStyle = '#ff6b6b';
+  ctx.fillRect(left + 1, s.y - cellH * 0.36 + 1, (barW - 2) * hpPct, barH - 2);
+  ctx.restore();
+}
+
+function render(){
+  ctx.clearRect(0, 0, W, H);
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#f8f4e4');
+  bg.addColorStop(1, '#dfeccf');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = 'rgba(122, 209, 74, 0.16)';
+  for (let i = 0; i < 18; i++){
+    const x = (i * 97) % W;
+    const y = 20 + ((i * 53) % (H - 40));
+    ctx.beginPath();
+    ctx.ellipse(x, y, 10 + (i % 3) * 4, 6 + (i % 2) * 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  for (let r = 0; r < ROWS; r++){
+    for (let c = 0; c < COLS; c++){
+      const x = c * cellW;
+      const y = r * cellH;
+      const tile = ctx.createLinearGradient(x, y, x + cellW, y + cellH);
+      tile.addColorStop(0, '#f7f2ea');
+      tile.addColorStop(1, '#efe2d2');
+      ctx.fillStyle = tile;
+      ctx.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
+      ctx.strokeStyle = 'rgba(141, 113, 93, 0.14)';
+      ctx.strokeRect(x + 1, y + 1, cellW - 2, cellH - 2);
+    }
+  }
+
+  ctx.shadowBlur = 8;
+  ctx.shadowColor = 'rgba(0,0,0,0.14)';
+  ctx.fillStyle = '#d7c9bf';
+  ctx.strokeStyle = '#bdaaa0';
+  ctx.lineWidth = Math.min(cellW, cellH) * 0.55;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  for (let i = 1; i < pathCells.length; i++){
+    const a = pathCells[i - 1];
+    const b = pathCells[i];
+    const ac = {c: clamp(a.c, 0, COLS - 1), r: clamp(a.r, 0, ROWS - 1)};
+    const bc = {c: clamp(b.c, 0, COLS - 1), r: clamp(b.r, 0, ROWS - 1)};
+    const pa = gridToPixel(ac.c, ac.r);
+    const pb = gridToPixel(bc.c, bc.r);
+    if (i === 1) ctx.moveTo(pa.x, pa.y);
+    ctx.lineTo(pb.x, pb.y);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  const cabbageCell = {c: 9, r: 4};
+  const cab = gridToPixel(cabbageCell.c, cabbageCell.r);
+  ctx.save();
+  ctx.translate(cab.x, cab.y);
+  ctx.fillStyle = '#7ad14a';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, cellW * 0.36, cellH * 0.28, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#4C9A2A';
+  ctx.beginPath();
+  ctx.ellipse(-8, -8, 8, 6, -0.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(8, -8, 8, 6, 0.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2f4f1f';
+  ctx.beginPath();
+  ctx.arc(0, 0, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  for (const t of towers) drawTowerSprite(t);
+  for (const s of slugs){ if (s.alive || s.reached) drawEnemySprite(s); }
+
+  ctx.strokeStyle = '#956';
+  ctx.lineWidth = 2;
+  for (const p of projectiles){
+    ctx.save();
+    ctx.strokeStyle = '#8b5cf6';
+    ctx.lineWidth = 2.5;
+    ctx.shadowBlur = 6;
+    ctx.shadowColor = 'rgba(139, 92, 246, 0.4)';
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y); ctx.lineTo(p.tx, p.ty); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function getMouseGrid(e){
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX || e.touches && e.touches[0].clientX) - rect.left;
+  const y = (e.clientY || e.touches && e.touches[0].clientY) - rect.top;
+  return {c: Math.floor(x / cellW), r: Math.floor(y / cellH)};
+}
+
+function isPathCell(c,r){
+  return pathCells.some(pc => pc.c === c && pc.r === r);
+}
+
+canvas.addEventListener('click', onCanvasClick);
+canvas.addEventListener('touchstart', function(e){ e.preventDefault(); onCanvasClick(e); }, {passive:false});
+
+function onCanvasClick(e){
+  if (!running) return;
+  const g = getMouseGrid(e);
+  if (g.c < 0 || g.c >= COLS || g.r < 0 || g.r >= ROWS) return;
+  const existing = towers.find(t => t.c === g.c && t.r === g.r);
+  if (existing){
+    const def = towerDefinitions[existing.kind];
+    if (coins >= def.upgradeCost){
+      coins -= def.upgradeCost;
+      existing.level += 1;
+      existing.baseDamage = Math.round(existing.baseDamage * 1.35);
+      existing.range += 0.35;
+      existing.fireRate = Math.max(0.25, existing.fireRate * 0.9);
+      beep(720,'sine',0.08,0.06);
+    } else {
+      beep(220,'sine',0.05,0.04);
+    }
+    return;
+  }
+  if (!isPathCell(g.c, g.r)){
+    const def = towerDefinitions[selectedTowerType];
+    if (coins >= def.cost){
+      coins -= def.cost;
+      towers.push(createTower(selectedTowerType, g.c, g.r));
+      beep(520,'triangle',0.06,0.06);
+    } else {
+      beep(220,'sine',0.04,0.03);
+    }
+  } else {
+    beep(220,'sine',0.04,0.03);
+  }
+}
+
+function updateUI(){
+  waveDisplay.textContent = `Wave: ${wave} (∞)`;
+  coinsDisplay.textContent = `Coins: ${coins}`;
+  document.getElementById('coinDisplay').textContent = `Coins: ${coins}`;
+  livesDisplay.textContent = `Slugs reached: ${slugReached} / ${maxAllowedReached}`;
+  const saltTxt = document.getElementById('saltCooldown');
+  const useSaltBtn = document.getElementById('useSaltBtn');
+  if (saltReady){ saltTxt.textContent = 'Ready'; useSaltBtn.disabled = false; }
+  else { saltTxt.textContent = 'Ready in ' + Math.ceil(saltCooldown / 1000) + 's'; useSaltBtn.disabled = true; }
+}
+
+function gameOver(){
+  running = false;
+  overlay.style.display = 'flex';
+  gameOverCard.style.display = 'block';
+  startCard.style.display = 'none';
+  winCard.style.display = 'none';
+  document.getElementById('gameOverText').textContent = `Too many pests reached your cabbage (${slugReached} reached).`;
+  loseSound();
+}
+
+function selectTower(type){
+  if (!towerDefinitions[type]) return;
+  selectedTowerType = type;
+  document.querySelectorAll('.tower-card').forEach(card => {
+    card.classList.toggle('active', card.getAttribute('data-tower-type') === type);
+  });
+}
+
+/* ======= Hook up controls ======= */
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  if (!running) startGame();
+  else paused = false;
+});
+document.getElementById('overlayStart').addEventListener('click', ()=>{ startGame(); });
+document.getElementById('retryBtn').addEventListener('click', ()=>{ resetGame(); });
+document.getElementById('playAgainBtn').addEventListener('click', ()=>{ resetGame(); });
+
+document.getElementById('pauseBtn').addEventListener('click', ()=>{
+  paused = !paused;
+  document.getElementById('pauseBtn').textContent = paused ? 'Resume' : 'Pause';
+});
+
+document.getElementById('resetBtn').addEventListener('click', ()=>{ resetGame(); });
+
+document.getElementById('saltBtn').addEventListener('click', useSalt);
+document.getElementById('useSaltBtn').addEventListener('click', useSalt);
+
+document.querySelectorAll('.tower-card').forEach(card => {
+  card.addEventListener('click', () => selectTower(card.getAttribute('data-tower-type')));
+});
+
+window.addEventListener('keydown', (e)=>{
+  if (e.key === 's' || e.key === 'S'){ useSalt(); }
+  if (e.key === 'p' || e.key === 'P'){ paused = !paused; }
+});
+
+document.body.addEventListener('touchmove', function(e){ if (e.target === canvas) e.preventDefault(); }, {passive:false});
+
+selectTower(selectedTowerType);
+updateUI();
+render();
+
+window._GG = { spawnTest: ()=>spawnSlug(), coins, towers, slugs };
+</script>
+</body>
+</html>
