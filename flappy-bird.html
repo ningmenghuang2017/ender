@@ -3,18 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Portal Flappy Bird</title>
+  <title>Portal Flappy Remix</title>
   <style>
     :root {
-      --sky-top: #76d8ff;
-      --sky-bottom: #fff4ab;
-      --ground: #73c96a;
+      --sky-top: #7fd7ff;
+      --sky-bottom: #fff7b2;
       --pipe: #4caf50;
       --pipe-dark: #2e7d32;
-      --flip-portal: #8b5cf6;
-      --clone-portal: #f97316;
-      --bird-main: #ffca28;
-      --bird-clone: #22d3ee;
+      --portal: #8b5cf6;
+      --portal-alt: #f97316;
+      --ground: #76c95f;
+      --ground-dark: #5da84a;
+      --bird: #ffca28;
       --ink: #1f2937;
     }
 
@@ -26,87 +26,45 @@
       display: grid;
       place-items: center;
       font-family: Arial, sans-serif;
-      background: linear-gradient(180deg, #ebf9ff 0%, #d3f2ff 55%, #f9ffe0 100%);
+      background: linear-gradient(180deg, #ecf9ff 0%, #e0f7ff 60%, #f8ffd8 100%);
       color: var(--ink);
     }
 
     .shell {
-      width: min(94vw, 520px);
-      border-radius: 22px;
+      width: min(95vw, 560px);
+      border-radius: 20px;
       overflow: hidden;
+      background: rgba(255, 255, 255, 0.93);
       border: 2px solid rgba(0, 0, 0, 0.08);
       box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
-      background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.9));
     }
 
     .hud {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
       padding: 12px 14px;
       font-weight: 700;
-      background: rgba(255,255,255,0.68);
-      font-size: 0.95rem;
+      background: rgba(255, 255, 255, 0.7);
+      font-size: 0.94rem;
     }
 
     canvas {
-      display: block;
       width: 100%;
       height: auto;
+      display: block;
       background: linear-gradient(180deg, var(--sky-top), var(--sky-bottom));
       cursor: pointer;
       touch-action: manipulation;
     }
 
-    .controls {
-      display: flex;
-      gap: 8px;
-      justify-content: center;
-      align-items: center;
-      flex-wrap: wrap;
-      padding: 12px 14px 10px;
-    }
-
-    button {
-      border: 0;
-      border-radius: 999px;
-      padding: 10px 14px;
-      font-weight: 700;
-      cursor: pointer;
-      color: #fff;
-      background: linear-gradient(135deg, #ff9800, #ff6d00);
-      box-shadow: 0 7px 16px rgba(255, 109, 0, 0.28);
-    }
-
-    button.secondary {
-      background: linear-gradient(135deg, #4caf50, #2e7d32);
-      box-shadow: 0 7px 16px rgba(46, 125, 50, 0.25);
-    }
-
     .hint {
-      text-align: center;
-      font-size: 0.92rem;
+      padding: 10px 14px 14px;
+      font-size: 0.9rem;
       color: #4b5563;
-      padding: 0 14px 14px;
-    }
-
-    .legend {
-      display: flex;
-      justify-content: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      font-size: 0.84rem;
-      color: #334155;
-      padding: 0 14px 12px;
-    }
-
-    .dot {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      margin-right: 5px;
-      vertical-align: middle;
+      text-align: center;
     }
   </style>
 </head>
@@ -115,18 +73,11 @@
     <div class="hud">
       <div>Score: <span id="score">0</span></div>
       <div>Best: <span id="best">0</span></div>
-      <div>Birds: <span id="birds">1</span></div>
+      <div>Mode: <span id="mode">Portal Flappy</span></div>
+      <div>Coins: <span id="coins">0</span></div>
     </div>
-    <canvas id="game" width="520" height="680"></canvas>
-    <div class="controls">
-      <button id="startBtn">Start</button>
-      <button id="restartBtn" class="secondary">Restart</button>
-    </div>
-    <div class="legend">
-      <span><span class="dot" style="background:#8b5cf6"></span>Flip portal (reverse gravity)</span>
-      <span><span class="dot" style="background:#f97316"></span>Clone portal (adds a second bird)</span>
-    </div>
-    <div class="hint">Click/tap or press Space to flap all birds. Go through every portal, and avoid pipes plus floor/ceiling.</div>
+    <canvas id="game" width="560" height="700"></canvas>
+    <div class="hint">Tap/click or press Space. Go through giant middle portals. Hidden coins are small and tricky to reach.</div>
   </div>
 
   <script>
@@ -134,424 +85,577 @@
     const ctx = canvas.getContext('2d');
     const scoreEl = document.getElementById('score');
     const bestEl = document.getElementById('best');
-    const birdsEl = document.getElementById('birds');
-    const startBtn = document.getElementById('startBtn');
-    const restartBtn = document.getElementById('restartBtn');
+    const modeEl = document.getElementById('mode');
+    const coinsEl = document.getElementById('coins');
 
     const W = canvas.width;
     const H = canvas.height;
-    const GROUND_H = 88;
-    const PIPE_W = 74;
-    const PIPE_GAP = 178;
-    const PIPE_SPEED = 2.65;
-    const PORTAL_RADIUS = 56;
 
-    const FLAP_V = 6.9;
-    const BASE_G = 0.39;
+    const GROUND_H = 92;
+    const PIPE_W = 78;
+    const PIPE_GAP = 184;
+    const PIPE_SPEED = 2.6;
+    const BIG_PORTAL_R = 62;
 
-    let birds = [];
+    const FLAP_G = 0.4;
+    const FLAP_V = -7.2;
+
+    let state = 'ready';
+    let score = 0;
+    let best = Number(localStorage.getItem('portal-remix-best') || 0);
+    let coinCount = 0;
+    let activeEffect = 'None';
+    let effectFrames = 0;
+    let gravityMul = 1;
+    let flapMul = 1;
+    let pipeMul = 1;
+    let magnetFrames = 0;
+    let failReason = 'Avoid obstacles.';
+
+    let pipeTimer = 0;
+    let portalCooldown = 0;
     let pipes = [];
     let portals = [];
-    let score = 0;
-    let best = Number(localStorage.getItem('portal-flappy-best') || 0);
-    let spawnPipeTimer = 0;
-    let state = 'ready';
-    let failReason = 'Avoid pipes and floor/ceiling.';
+    let hiddenCoins = [];
+
+    const portalKinds = ['lowGravity', 'highGravity', 'boostFlap', 'slowPipes', 'magnet', 'coinRain'];
+
+    const player = {
+      x: 140,
+      y: H * 0.42,
+      vy: 0,
+      r: 18,
+      rotation: 0
+    };
+
+    function resetRun() {
+      state = 'ready';
+      score = 0;
+      coinCount = 0;
+      failReason = 'Avoid obstacles.';
+      activeEffect = 'None';
+      effectFrames = 0;
+      gravityMul = 1;
+      flapMul = 1;
+      pipeMul = 1;
+      magnetFrames = 0;
+      pipeTimer = 0;
+      portalCooldown = 0;
+      pipes = [];
+      portals = [];
+      hiddenCoins = [];
+      player.y = H * 0.42;
+      player.vy = 0;
+      player.rotation = 0;
+      updateHud();
+    }
 
     function updateHud() {
       scoreEl.textContent = score;
       bestEl.textContent = best;
-      birdsEl.textContent = birds.length;
+      coinsEl.textContent = coinCount;
+      modeEl.textContent = activeEffect === 'None' ? 'Portal Flappy' : `Portal Flappy • ${activeEffect}`;
     }
 
-    function makeBird(opts = {}) {
-      return {
-        x: opts.x ?? 130,
-        y: opts.y ?? H * 0.45,
-        vy: 0,
-        r: 18,
-        gravity: opts.gravity ?? BASE_G,
-        flapDir: opts.flapDir ?? -1,
-        color: opts.color ?? 'main',
-        tilt: 0,
-        alive: true,
-        touchedFlipPortalId: null,
-        touchedClonePortalId: null
-      };
+    function resetEffects() {
+      activeEffect = 'None';
+      effectFrames = 0;
+      gravityMul = 1;
+      flapMul = 1;
+      pipeMul = 1;
+      magnetFrames = 0;
     }
 
-    function resetGame() {
-      birds = [makeBird({ color: 'main' })];
-      pipes = [];
-      portals = [];
-      score = 0;
-      spawnPipeTimer = 0;
-      state = 'ready';
-      failReason = 'Avoid pipes and floor/ceiling.';
-      startBtn.disabled = false;
-      startBtn.textContent = 'Start';
+    function setEffect(name, frames, config) {
+      activeEffect = name;
+      effectFrames = frames;
+      gravityMul = config.gravityMul ?? 1;
+      flapMul = config.flapMul ?? 1;
+      pipeMul = config.pipeMul ?? 1;
+      magnetFrames = config.magnetFrames ?? 0;
+    }
+
+    function applyPortalKind(kind) {
+      score += 10;
+      if (kind === 'lowGravity') {
+        setEffect('Low Gravity', 300, { gravityMul: 0.55, flapMul: 1.05 });
+      } else if (kind === 'highGravity') {
+        setEffect('Heavy Gravity', 300, { gravityMul: 1.55, flapMul: 0.9 });
+      } else if (kind === 'boostFlap') {
+        setEffect('Boost Flap', 300, { gravityMul: 1, flapMul: 1.45 });
+      } else if (kind === 'slowPipes') {
+        setEffect('Slow Pipes', 300, { gravityMul: 1, flapMul: 1, pipeMul: 0.72 });
+      } else if (kind === 'magnet') {
+        setEffect('Coin Magnet', 360, { gravityMul: 1, flapMul: 1, pipeMul: 1, magnetFrames: 360 });
+      } else if (kind === 'coinRain') {
+        activeEffect = 'Coin Rain';
+        effectFrames = 180;
+        coinCount += 12;
+        score += 12;
+      }
+      best = Math.max(best, score);
+      localStorage.setItem('portal-remix-best', String(best));
       updateHud();
+    }
+
+    function startGame() {
+      if (state === 'over') {
+        resetRun();
+      }
+      state = 'playing';
     }
 
     function endGame(reason) {
       state = 'over';
       failReason = reason;
-      startBtn.disabled = false;
-      startBtn.textContent = 'Start';
+      best = Math.max(best, score);
+      localStorage.setItem('portal-remix-best', String(best));
+      updateHud();
     }
 
-    function startGame() {
-      if (state === 'over') {
-        resetGame();
-      }
-      state = 'playing';
-      startBtn.textContent = 'Playing';
-      startBtn.disabled = true;
-    }
-
-    function flap() {
+    function tapAction() {
       if (state === 'ready') {
         startGame();
       }
       if (state !== 'playing') return;
 
-      birds.forEach((b) => {
-        b.vy = FLAP_V * b.flapDir;
-      });
+      player.vy = FLAP_V;
     }
 
     function spawnPipe() {
       const minTop = 70;
       const maxTop = H - GROUND_H - PIPE_GAP - 70;
       const topH = minTop + Math.random() * (maxTop - minTop);
-      const pipe = {
+      const fakeTop = Math.random() < 0.5;
+      const fakeSpot = fakeTop
+        ? {
+            x: W + 20 + (PIPE_W - 48) / 2,
+            y: 34 + Math.random() * Math.max(20, topH - 88),
+            w: 48,
+            h: 56
+          }
+        : {
+            x: W + 20 + (PIPE_W - 48) / 2,
+            y: topH + PIPE_GAP + 16 + Math.random() * Math.max(18, H - GROUND_H - (topH + PIPE_GAP) - 88),
+            w: 48,
+            h: 56
+          };
+
+      const newPipe = {
         x: W + 20,
         topH,
         bottomY: topH + PIPE_GAP,
-        passed: false
+        passed: false,
+        fakeSpot,
+        fakeCoin: {
+          x: fakeSpot.x + fakeSpot.w / 2,
+          y: fakeSpot.y + fakeSpot.h / 2,
+          r: 12,
+          value: 12,
+          collected: false,
+          life: 520
+        }
       };
-      pipes.push(pipe);
-      return pipe;
+      const prev = pipes[pipes.length - 1];
+      pipes.push(newPipe);
+
+      if (prev) {
+        spawnBigPortalBetween(prev, newPipe);
+        spawnHiddenCoinsBetween(prev, newPipe);
+      }
     }
 
-    function spawnPortalBetweenPipes(leftPipe, rightPipe) {
+    function spawnHiddenCoinsBetween(leftPipe, rightPipe) {
       if (!leftPipe || !rightPipe) return;
-      const type = Math.random() < 0.5 ? 'flip' : 'clone';
-      const leftCenterY = leftPipe.topH + PIPE_GAP / 2;
-      const rightCenterY = rightPipe.topH + PIPE_GAP / 2;
-      const y = (leftCenterY + rightCenterY) / 2;
-
       const laneStart = leftPipe.x + PIPE_W;
       const laneEnd = rightPipe.x;
-      if (laneEnd - laneStart < PORTAL_RADIUS * 1.2) return;
+      const centerX = (laneStart + laneEnd) / 2;
+      const gapCenter = leftPipe.topH + PIPE_GAP / 2;
+
+      const roll = Math.random();
+      if (roll < 0.55) {
+        const topSide = Math.random() < 0.5;
+        const offsetY = topSide ? -PIPE_GAP * (0.38 + Math.random() * 0.08) : PIPE_GAP * (0.34 + Math.random() * 0.08);
+        hiddenCoins.push({
+          x: centerX + (Math.random() * 24 - 12),
+          y: gapCenter + offsetY,
+          r: 7,
+          value: 5,
+          collected: false,
+          alpha: 0.55,
+          life: 520
+        });
+      }
+
+      if (roll > 0.78) {
+        hiddenCoins.push({
+          x: centerX + (Math.random() * 28 - 14),
+          y: leftPipe.topH + 24 + Math.random() * 18,
+          r: 10,
+          value: 8,
+          collected: false,
+          alpha: 0.42,
+          life: 520
+        });
+      }
+    }
+
+    function spawnBigPortalBetween(leftPipe, rightPipe) {
+      const laneStart = leftPipe.x + PIPE_W;
+      const laneEnd = rightPipe.x;
+      if (laneEnd - laneStart < BIG_PORTAL_R * 1.1) return;
+
+      const leftCenterY = leftPipe.topH + PIPE_GAP / 2;
+      const rightCenterY = rightPipe.topH + PIPE_GAP / 2;
+      const kind = portalKinds[(Math.random() * portalKinds.length) | 0];
 
       portals.push({
         x: (laneStart + laneEnd) / 2,
-        y,
-        r: PORTAL_RADIUS,
-        type,
-        id: `${type}-${Math.random().toString(36).slice(2, 9)}`,
-        life: 520,
+        y: (leftCenterY + rightCenterY) / 2,
+        r: BIG_PORTAL_R,
+        kind,
         triggered: false,
-        required: true
+        required: true,
+        life: 520
       });
     }
 
-    function cloneBirdFrom(source) {
-      if (birds.length >= 4) return;
-      const gravityScale = 0.65 + Math.random() * 1.1;
-      const clone = makeBird({
-        x: source.x + 8,
-        y: source.y + (Math.random() * 22 - 11),
-        gravity: BASE_G * gravityScale,
-        flapDir: source.flapDir,
-        color: 'clone'
-      });
-      clone.vy = source.vy * 0.6;
-      birds.push(clone);
-      updateHud();
-    }
-
-    function collideCircleRect(cx, cy, cr, rx, ry, rw, rh) {
-      const nearX = Math.max(rx, Math.min(cx, rx + rw));
-      const nearY = Math.max(ry, Math.min(cy, ry + rh));
-      const dx = cx - nearX;
-      const dy = cy - nearY;
+    function circleRectHit(cx, cy, cr, rx, ry, rw, rh) {
+      const nx = Math.max(rx, Math.min(cx, rx + rw));
+      const ny = Math.max(ry, Math.min(cy, ry + rh));
+      const dx = cx - nx;
+      const dy = cy - ny;
       return dx * dx + dy * dy < cr * cr;
     }
 
-    function collideBirdPipe(bird, pipe) {
-      const hitTop = collideCircleRect(bird.x, bird.y, bird.r, pipe.x, 0, PIPE_W, pipe.topH);
-      const hitBottom = collideCircleRect(
-        bird.x,
-        bird.y,
-        bird.r,
-        pipe.x,
-        pipe.bottomY,
-        PIPE_W,
-        H - GROUND_H - pipe.bottomY
-      );
-      return hitTop || hitBottom;
+    function circleHitsCircle(ax, ay, ar, bx, by, br) {
+      const dx = ax - bx;
+      const dy = ay - by;
+      return dx * dx + dy * dy < (ar + br) * (ar + br);
     }
 
-    function updateBirds() {
-      for (let i = birds.length - 1; i >= 0; i -= 1) {
-        const b = birds[i];
+    function rectContainsCircle(cx, cy, cr, rx, ry, rw, rh) {
+      return cx - cr < rx && cx + cr > rx + rw && cy - cr < ry && cy + cr > ry + rh;
+    }
 
-        b.vy += b.gravity;
-        b.y += b.vy;
-        b.tilt = Math.max(-1.2, Math.min(1.2, b.vy / 10));
-
-        for (let j = 0; j < pipes.length; j += 1) {
-          if (collideBirdPipe(b, pipes[j])) {
-            b.alive = false;
-            break;
-          }
-        }
-
-        if (b.y + b.r >= H - GROUND_H || b.y - b.r <= 0) {
-          b.alive = false;
-        }
-
-        if (b.alive) {
-          for (let k = portals.length - 1; k >= 0; k -= 1) {
-            const p = portals[k];
-            const dx = b.x - p.x;
-            const dy = b.y - p.y;
-            const touching = dx * dx + dy * dy < (b.r + p.r) * (b.r + p.r);
-
-            if (p.type === 'flip') {
-              if (touching && b.touchedFlipPortalId !== p.id) {
-                b.flapDir *= -1;
-                b.gravity *= -1;
-                b.vy *= 0.55;
-                b.touchedFlipPortalId = p.id;
-                p.triggered = true;
-              }
-              if (!touching && b.touchedFlipPortalId === p.id) {
-                b.touchedFlipPortalId = null;
-              }
-            } else {
-              if (touching && b.touchedClonePortalId !== p.id) {
-                cloneBirdFrom(b);
-                b.touchedClonePortalId = p.id;
-                p.triggered = true;
-              }
-              if (!touching && b.touchedClonePortalId === p.id) {
-                b.touchedClonePortalId = null;
-              }
-            }
-          }
-        }
-
-        if (!b.alive) {
-          birds.splice(i, 1);
+    function updatePortalFlappy() {
+      if (effectFrames > 0) {
+        effectFrames -= 1;
+        if (effectFrames <= 0) {
+          resetEffects();
         }
       }
 
-      if (birds.length === 0) {
-        endGame('All birds were lost.');
+      if (magnetFrames > 0) {
+        magnetFrames -= 1;
       }
 
-      updateHud();
+      pipeTimer += 1;
+      if (pipeTimer >= 95) {
+        spawnPipe();
+        pipeTimer = 0;
+      }
+
+      player.vy += FLAP_G * gravityMul;
+      player.y += player.vy;
+      player.rotation = Math.max(-0.9, Math.min(1.1, player.vy / (11 * flapMul)));
+
+      pipes.forEach((p) => { p.x -= PIPE_SPEED * pipeMul; });
+      portals.forEach((p) => {
+        p.x -= PIPE_SPEED * pipeMul;
+        p.life -= 1;
+      });
+
+      for (let i = pipes.length - 1; i >= 0; i -= 1) {
+        const p = pipes[i];
+        const fakeSpot = p.fakeSpot;
+        const inFakeSpot = fakeSpot && circleHitsCircle(player.x, player.y, player.r, fakeSpot.x + fakeSpot.w / 2, fakeSpot.y + fakeSpot.h / 2, Math.max(fakeSpot.w, fakeSpot.h) / 2 - 4);
+        const topHit = !inFakeSpot && circleRectHit(player.x, player.y, player.r, p.x, 0, PIPE_W, p.topH);
+        const bottomHit = !inFakeSpot && circleRectHit(player.x, player.y, player.r, p.x, p.bottomY, PIPE_W, H - GROUND_H - p.bottomY);
+        if (topHit || bottomHit) {
+          endGame('Hit a pipe.');
+          return;
+        }
+
+        if (!p.passed && p.x + PIPE_W < player.x) {
+          p.passed = true;
+          score += 1;
+          updateHud();
+        }
+
+        if (p.x + PIPE_W < -30) pipes.splice(i, 1);
+      }
+
+      for (let i = portals.length - 1; i >= 0; i -= 1) {
+        const p = portals[i];
+        const dx = player.x - p.x;
+        const dy = player.y - p.y;
+        const touching = dx * dx + dy * dy < (player.r + p.r) * (player.r + p.r);
+
+        if (touching && !p.triggered && portalCooldown <= 0) {
+          p.triggered = true;
+          portalCooldown = 45;
+          applyPortalKind(p.kind);
+          updateHud();
+          return;
+        }
+
+        const missedRequired = p.required && !p.triggered && p.x + p.r < player.x;
+        if (missedRequired) {
+          endGame('You must go through the giant portal.');
+          return;
+        }
+      }
+
+      portals = portals.filter((p) => p.x + p.r > -40 && p.life > 0);
+      hiddenCoins.forEach((c) => {
+        c.x -= PIPE_SPEED * pipeMul;
+        c.life -= 1;
+        if (magnetFrames > 0) {
+          c.x += (player.x - c.x) * 0.04;
+          c.y += (player.y - c.y) * 0.04;
+        }
+      });
+      hiddenCoins = hiddenCoins.filter((c) => c.life > 0 && c.x + c.r > -20);
+
+      for (let i = hiddenCoins.length - 1; i >= 0; i -= 1) {
+        const c = hiddenCoins[i];
+        if (circleHitsCircle(player.x, player.y, player.r, c.x, c.y, c.r)) {
+          hiddenCoins.splice(i, 1);
+          coinCount += c.value;
+          score += c.value;
+          best = Math.max(best, score);
+          localStorage.setItem('portal-remix-best', String(best));
+          updateHud();
+        }
+      }
+
+      for (let i = pipes.length - 1; i >= 0; i -= 1) {
+        const p = pipes[i];
+        if (p.fakeCoin && !p.fakeCoin.collected) {
+          p.fakeCoin.x -= PIPE_SPEED * pipeMul;
+          p.fakeCoin.life -= 1;
+          if (magnetFrames > 0) {
+            p.fakeCoin.x += (player.x - p.fakeCoin.x) * 0.05;
+            p.fakeCoin.y += (player.y - p.fakeCoin.y) * 0.05;
+          }
+          if (circleHitsCircle(player.x, player.y, player.r, p.fakeCoin.x, p.fakeCoin.y, p.fakeCoin.r)) {
+            p.fakeCoin.collected = true;
+            coinCount += p.fakeCoin.value;
+            score += p.fakeCoin.value;
+            best = Math.max(best, score);
+            localStorage.setItem('portal-remix-best', String(best));
+            updateHud();
+          }
+          if (p.fakeCoin.life <= 0) {
+            p.fakeCoin.collected = true;
+          }
+        }
+      }
+
+      if (player.y - player.r <= 0 || player.y + player.r >= H - GROUND_H) {
+        endGame('Crashed into ceiling or ground.');
+      }
     }
 
     function update() {
       if (state !== 'playing') return;
 
-      spawnPipeTimer += 1;
+      if (portalCooldown > 0) portalCooldown -= 1;
 
-      if (spawnPipeTimer >= 95) {
-        const previousPipe = pipes[pipes.length - 1];
-        const newPipe = spawnPipe();
-        if (previousPipe) {
-          spawnPortalBetweenPipes(previousPipe, newPipe);
-        }
-        spawnPipeTimer = 0;
-      }
-
-      pipes.forEach((p) => {
-        p.x -= PIPE_SPEED;
-      });
-
-      for (let i = pipes.length - 1; i >= 0; i -= 1) {
-        const p = pipes[i];
-        if (!p.passed && p.x + PIPE_W < birds[0]?.x) {
-          p.passed = true;
-          score += 1;
-          best = Math.max(best, score);
-          localStorage.setItem('portal-flappy-best', String(best));
-          updateHud();
-        }
-        if (p.x + PIPE_W < -30) {
-          pipes.splice(i, 1);
-        }
-      }
-
-      portals.forEach((p) => {
-        p.x -= PIPE_SPEED;
-        p.life -= 1;
-      });
-
-      for (let i = portals.length - 1; i >= 0; i -= 1) {
-        const p = portals[i];
-        const missedRequiredPortal = p.required && !p.triggered && p.x + p.r < (birds[0]?.x ?? 130);
-        if (missedRequiredPortal) {
-          endGame('You must pass through every portal.');
-          return;
-        }
-      }
-
-      portals = portals.filter((p) => p.x + p.r > -30 && p.life > 0);
-
-      updateBirds();
+      updatePortalFlappy();
     }
 
     function drawSky() {
-      const g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, '#82deff');
-      g.addColorStop(0.55, '#d2f6ff');
-      g.addColorStop(1, '#fff7bc');
-      ctx.fillStyle = g;
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, '#82e4ff');
+      grad.addColorStop(0.6, '#d4f8ff');
+      grad.addColorStop(1, '#fff6be');
+      ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
 
       ctx.fillStyle = '#ffd54f';
       ctx.beginPath();
-      ctx.arc(W - 90, 100, 40, 0, Math.PI * 2);
+      ctx.arc(W - 95, 95, 42, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = 'rgba(255,255,255,0.75)';
-      for (let i = 0; i < 5; i += 1) {
-        const cx = 75 + i * 95;
-        const cy = 80 + (i % 2) * 34;
+      for (let i = 0; i < 6; i += 1) {
+        const x = 55 + i * 88;
+        const y = 78 + (i % 2) * 26;
         ctx.beginPath();
-        ctx.arc(cx, cy, 14, 0, Math.PI * 2);
-        ctx.arc(cx + 16, cy - 4, 16, 0, Math.PI * 2);
-        ctx.arc(cx + 34, cy, 12, 0, Math.PI * 2);
+        ctx.arc(x, y, 13, 0, Math.PI * 2);
+        ctx.arc(x + 14, y - 4, 16, 0, Math.PI * 2);
+        ctx.arc(x + 32, y, 11, 0, Math.PI * 2);
         ctx.fill();
       }
     }
 
     function drawGround() {
-      ctx.fillStyle = varColor('--ground');
+      ctx.fillStyle = getCss('--ground');
       ctx.fillRect(0, H - GROUND_H, W, GROUND_H);
-
-      ctx.fillStyle = '#5ea94e';
-      for (let i = 0; i < 14; i += 1) {
-        const x = i * 40 - 18;
-        ctx.fillRect(x, H - GROUND_H + 14, 24, 10);
+      ctx.fillStyle = getCss('--ground-dark');
+      for (let i = 0; i < 15; i += 1) {
+        ctx.fillRect(i * 40 - 16, H - GROUND_H + 14, 24, 10);
       }
     }
 
     function drawPipes() {
       pipes.forEach((p) => {
-        ctx.fillStyle = varColor('--pipe');
+        ctx.fillStyle = getCss('--pipe');
         ctx.fillRect(p.x, 0, PIPE_W, p.topH);
-        ctx.fillStyle = varColor('--pipe-dark');
+        ctx.fillStyle = getCss('--pipe-dark');
         ctx.fillRect(p.x, p.topH - 13, PIPE_W, 13);
 
-        ctx.fillStyle = varColor('--pipe');
+        ctx.fillStyle = getCss('--pipe');
         ctx.fillRect(p.x, p.bottomY, PIPE_W, H - GROUND_H - p.bottomY);
-        ctx.fillStyle = varColor('--pipe-dark');
+        ctx.fillStyle = getCss('--pipe-dark');
         ctx.fillRect(p.x, p.bottomY, PIPE_W, 13);
+
+        if (p.fakeSpot) {
+          ctx.save();
+          ctx.globalAlpha = 0.9;
+          ctx.fillStyle = '#050505';
+          ctx.fillRect(p.fakeSpot.x, p.fakeSpot.y, p.fakeSpot.w, p.fakeSpot.h);
+          ctx.fillStyle = 'rgba(80,80,80,0.7)';
+          ctx.fillRect(p.fakeSpot.x + 4, p.fakeSpot.y + 4, p.fakeSpot.w - 8, p.fakeSpot.h - 8);
+          ctx.strokeStyle = '#111';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(p.fakeSpot.x + 1, p.fakeSpot.y + 1, p.fakeSpot.w - 2, p.fakeSpot.h - 2);
+          ctx.restore();
+        }
       });
     }
 
     function drawPortals() {
       portals.forEach((p) => {
-        const ring = p.type === 'flip' ? varColor('--flip-portal') : varColor('--clone-portal');
-        const pulse = 0.8 + Math.sin((Date.now() / 120) + p.y * 0.03) * 0.2;
+        const portalColors = {
+          lowGravity: '#8b5cf6',
+          highGravity: '#ef4444',
+          boostFlap: '#22c55e',
+          slowPipes: '#f97316',
+          magnet: '#06b6d4',
+          coinRain: '#eab308'
+        };
+        const ring = portalColors[p.kind] || getCss('--portal');
+        const pulse = 0.86 + Math.sin((Date.now() / 140) + p.y * 0.02) * 0.16;
 
         ctx.save();
         ctx.translate(p.x, p.y);
         ctx.strokeStyle = ring;
-        ctx.lineWidth = 8;
+        ctx.lineWidth = 10;
         ctx.beginPath();
         ctx.arc(0, 0, p.r * pulse, 0, Math.PI * 2);
         ctx.stroke();
 
         ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(0, 0, p.r * 0.56, 0, Math.PI * 2);
+        ctx.arc(0, 0, p.r * 0.58, 0, Math.PI * 2);
         ctx.stroke();
 
         ctx.fillStyle = ring;
-        if (p.type === 'flip') {
-          ctx.fillRect(-8, -2, 16, 4);
-          ctx.fillRect(-2, -10, 4, 20);
-        } else {
+        if (p.kind === 'lowGravity') {
+          ctx.fillRect(-10, -4, 20, 8);
+        } else if (p.kind === 'highGravity') {
           ctx.beginPath();
-          ctx.arc(-5, 0, 5, 0, Math.PI * 2);
-          ctx.arc(5, 0, 5, 0, Math.PI * 2);
+          ctx.arc(0, 0, 8, 0, Math.PI * 2);
           ctx.fill();
+        } else if (p.kind === 'boostFlap') {
+          ctx.fillRect(-4, -10, 8, 20);
+        } else if (p.kind === 'slowPipes') {
+          ctx.fillRect(-10, -10, 20, 20);
+        } else if (p.kind === 'magnet') {
+          ctx.beginPath();
+          ctx.arc(0, 0, 8, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillRect(-8, -8, 16, 16);
         }
         ctx.restore();
       });
     }
 
-    function drawBird(b) {
-      const color = b.color === 'main' ? varColor('--bird-main') : varColor('--bird-clone');
+    function drawHiddenCoins() {
+      hiddenCoins.forEach((c) => {
+        ctx.save();
+        ctx.globalAlpha = c.alpha;
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff7cc';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      pipes.forEach((p) => {
+        if (p.fakeCoin && !p.fakeCoin.collected) {
+          ctx.save();
+          ctx.fillStyle = '#ffd54f';
+          ctx.beginPath();
+          ctx.arc(p.fakeCoin.x, p.fakeCoin.y, p.fakeCoin.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#fff9cc';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
+    }
+
+    function drawBirdOrSquare() {
       ctx.save();
-      ctx.translate(b.x, b.y);
-      ctx.rotate(b.tilt * 0.6 + (b.gravity < 0 ? Math.PI : 0));
-
-      ctx.fillStyle = color;
+      ctx.translate(player.x, player.y);
+      ctx.rotate(player.rotation * 0.65);
+      ctx.fillStyle = getCss('--bird');
       ctx.beginPath();
-      ctx.arc(0, 0, b.r, 0, Math.PI * 2);
+      ctx.arc(0, 0, player.r, 0, Math.PI * 2);
       ctx.fill();
-
       ctx.fillStyle = '#fb923c';
       ctx.beginPath();
       ctx.arc(8, -4, 6, 0, Math.PI * 2);
       ctx.fill();
-
       ctx.fillStyle = '#111827';
       ctx.beginPath();
-      ctx.arc(5, -5, 3, 0, Math.PI * 2);
+      ctx.arc(5, -6, 3, 0, Math.PI * 2);
       ctx.fill();
-
       ctx.restore();
-
-      ctx.fillStyle = 'rgba(0,0,0,0.45)';
-      ctx.font = '11px Arial';
-      ctx.fillText(`g:${Math.abs(b.gravity).toFixed(2)}`, b.x - 13, b.y + b.r + 14);
     }
 
     function drawOverlays() {
       if (state === 'ready') {
-        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.fillStyle = 'rgba(255,255,255,0.56)';
         ctx.fillRect(0, 0, W, H);
-        ctx.fillStyle = '#1f2937';
         ctx.textAlign = 'center';
+        ctx.fillStyle = '#1f2937';
         ctx.font = 'bold 30px Arial';
-        ctx.fillText('Portal Flappy Bird', W / 2, H / 2 - 28);
+        ctx.fillText('Portal Flappy Remix', W / 2, H / 2 - 40);
         ctx.font = '16px Arial';
-        ctx.fillText('Purple portal flips gravity (upside-down flight)', W / 2, H / 2 + 4);
-        ctx.fillText('Orange portal duplicates bird with unique gravity', W / 2, H / 2 + 30);
-        ctx.fillText('Every portal is required: missing one ends the run', W / 2, H / 2 + 56);
-        ctx.fillText('Tap / Space to flap', W / 2, H / 2 + 82);
+        ctx.fillText('Go through giant portals centered between pipes', W / 2, H / 2 - 6);
+        ctx.fillText('Hidden coins are tiny, rare, and off the main path', W / 2, H / 2 + 22);
+        ctx.fillText('Portals can change gravity, flap power, pipe speed, or coins', W / 2, H / 2 + 50);
+        ctx.fillText('Tap / Space to start', W / 2, H / 2 + 80);
         ctx.textAlign = 'left';
       }
 
       if (state === 'over') {
-        ctx.fillStyle = 'rgba(0,0,0,0.33)';
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
         ctx.fillRect(0, 0, W, H);
-        ctx.fillStyle = '#fff';
         ctx.textAlign = 'center';
+        ctx.fillStyle = '#fff';
         ctx.font = 'bold 34px Arial';
         ctx.fillText('Game Over', W / 2, H / 2 - 20);
-        ctx.font = '19px Arial';
-        ctx.fillText(`Score: ${score}`, W / 2, H / 2 + 12);
-        ctx.fillText(`Best: ${best}`, W / 2, H / 2 + 38);
-        ctx.font = '15px Arial';
-        ctx.fillText(failReason, W / 2, H / 2 + 66);
-        ctx.fillText('Press Restart or Space to play again', W / 2, H / 2 + 90);
+        ctx.font = '18px Arial';
+        ctx.fillText(`Score: ${score}`, W / 2, H / 2 + 10);
+        ctx.fillText(failReason, W / 2, H / 2 + 40);
+        ctx.fillText('Tap / Space to restart', W / 2, H / 2 + 70);
         ctx.textAlign = 'left';
       }
     }
 
-    function varColor(name) {
+    function getCss(name) {
       return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     }
 
@@ -559,7 +663,8 @@
       drawSky();
       drawPipes();
       drawPortals();
-      birds.forEach(drawBird);
+      drawHiddenCoins();
+      drawBirdOrSquare();
       drawGround();
       drawOverlays();
     }
@@ -570,43 +675,29 @@
       requestAnimationFrame(loop);
     }
 
-    canvas.addEventListener('pointerdown', () => {
-      if (state === 'over') {
-        resetGame();
-        startGame();
-      } else {
-        flap();
-      }
-    });
-
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space' || e.code === 'ArrowUp') {
         e.preventDefault();
         if (state === 'over') {
-          resetGame();
+          resetRun();
           startGame();
         } else {
-          flap();
+          tapAction();
         }
       }
     });
 
-    startBtn.addEventListener('click', () => {
-      if (state === 'ready' || state === 'over') {
-        resetGame();
+    canvas.addEventListener('pointerdown', () => {
+      if (state === 'over') {
+        resetRun();
         startGame();
+      } else {
+        tapAction();
       }
     });
 
-    restartBtn.addEventListener('click', () => {
-      resetGame();
-      startGame();
-    });
-
-    updateHud();
-    resetGame();
+    resetRun();
     loop();
   </script>
 </body>
 </html>
-
