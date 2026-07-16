@@ -104,6 +104,11 @@
     let score = 0;
     let best = Number(localStorage.getItem('portal-remix-best') || 0);
     let coinCount = 0;
+    let deathCount = Number(localStorage.getItem('portal-remix-deaths') || 0);
+    let adRequired = false;
+    let adVisible = false;
+    let adTimer = 0;
+    let adCooldown = 0;
     let activeEffect = 'None';
     let effectFrames = 0;
     let gravityMul = 1;
@@ -129,6 +134,7 @@
     };
 
     function resetRun() {
+      if (adVisible) return;
       state = 'ready';
       score = 0;
       coinCount = 0;
@@ -199,21 +205,54 @@
     }
 
     function startGame() {
+      if (adVisible) return;
       if (state === 'over') {
         resetRun();
       }
       state = 'playing';
     }
 
-    function endGame(reason) {
+    function startAdBreak() {
+      adRequired = false;
+      adVisible = true;
+      adTimer = 8;
+      adCooldown = 0;
       state = 'over';
-      failReason = reason;
-      best = Math.max(best, score);
-      localStorage.setItem('portal-remix-best', String(best));
+      failReason = 'Ad break';
       updateHud();
     }
 
+    function finishAdBreak() {
+      adVisible = false;
+      adTimer = 0;
+      resetRun();
+    }
+
+    function endGame(reason) {
+      if (adVisible) return;
+      state = 'over';
+      failReason = reason;
+      deathCount += 1;
+      localStorage.setItem('portal-remix-deaths', String(deathCount));
+      best = Math.max(best, score);
+      localStorage.setItem('portal-remix-best', String(best));
+      updateHud();
+      if (deathCount >= 6) {
+        deathCount = 0;
+        localStorage.setItem('portal-remix-deaths', '0');
+        adRequired = true;
+        startAdBreak();
+        return;
+      }
+    }
+
     function tapAction() {
+      if (adVisible) {
+        if (adTimer <= 0) {
+          finishAdBreak();
+        }
+        return;
+      }
       if (state === 'ready') {
         startGame();
       }
@@ -459,6 +498,13 @@
     }
 
     function update() {
+      if (adVisible) {
+        if (adTimer > 0) {
+          adTimer -= 1 / 60;
+        }
+        return;
+      }
+
       if (state !== 'playing') return;
 
       if (portalCooldown > 0) portalCooldown -= 1;
@@ -625,6 +671,21 @@
     }
 
     function drawOverlays() {
+      if (adVisible) {
+        ctx.fillStyle = 'rgba(0,0,0,0.78)';
+        ctx.fillRect(0, 0, W, H);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 34px Arial';
+        ctx.fillText('Ad Break', W / 2, H / 2 - 46);
+        ctx.font = '18px Arial';
+        ctx.fillText('Watch this short ad to continue', W / 2, H / 2 - 12);
+        ctx.fillText(`Continue in ${Math.max(0, Math.ceil(adTimer))}s`, W / 2, H / 2 + 18);
+        ctx.fillText(adTimer <= 0 ? 'Tap to close ad' : 'Please wait', W / 2, H / 2 + 48);
+        ctx.textAlign = 'left';
+        return;
+      }
+
       if (state === 'ready') {
         ctx.fillStyle = 'rgba(255,255,255,0.56)';
         ctx.fillRect(0, 0, W, H);
@@ -649,6 +710,7 @@
         ctx.fillText('Game Over', W / 2, H / 2 - 20);
         ctx.font = '18px Arial';
         ctx.fillText(`Score: ${score}`, W / 2, H / 2 + 10);
+        ctx.fillText(`Deaths: ${deathCount}/6`, W / 2, H / 2 + 28);
         ctx.fillText(failReason, W / 2, H / 2 + 40);
         ctx.fillText('Tap / Space to restart', W / 2, H / 2 + 70);
         ctx.textAlign = 'left';
@@ -678,7 +740,15 @@
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space' || e.code === 'ArrowUp') {
         e.preventDefault();
+        if (adVisible) {
+          if (adTimer <= 0) finishAdBreak();
+          return;
+        }
         if (state === 'over') {
+          if (adRequired) {
+            startAdBreak();
+            return;
+          }
           resetRun();
           startGame();
         } else {
@@ -688,7 +758,15 @@
     });
 
     canvas.addEventListener('pointerdown', () => {
+      if (adVisible) {
+        if (adTimer <= 0) finishAdBreak();
+        return;
+      }
       if (state === 'over') {
+        if (adRequired) {
+          startAdBreak();
+          return;
+        }
         resetRun();
         startGame();
       } else {
