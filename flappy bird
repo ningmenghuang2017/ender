@@ -3,101 +3,81 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sunny Flappy Bird</title>
+  <title>Portal Flappy Remix</title>
   <style>
     :root {
       --sky-top: #7fd7ff;
       --sky-bottom: #fff7b2;
-      --ground: #7bc96f;
       --pipe: #4caf50;
       --pipe-dark: #2e7d32;
+      --portal: #8b5cf6;
+      --portal-alt: #f97316;
+      --ground: #76c95f;
+      --ground-dark: #5da84a;
       --bird: #ffca28;
-      --text: #1f2937;
+      --ink: #1f2937;
     }
 
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       min-height: 100vh;
       display: grid;
       place-items: center;
       font-family: Arial, sans-serif;
-      background: linear-gradient(180deg, #f0f9ff 0%, #dff7ff 100%);
-      color: var(--text);
+      background: linear-gradient(180deg, #ecf9ff 0%, #e0f7ff 60%, #f8ffd8 100%);
+      color: var(--ink);
     }
 
-    .game-shell {
-      width: min(92vw, 480px);
-      background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.88));
-      border-radius: 24px;
-      box-shadow: 0 16px 40px rgba(0,0,0,0.16);
+    .shell {
+      width: min(95vw, 560px);
+      border-radius: 20px;
       overflow: hidden;
-      border: 2px solid rgba(0,0,0,0.06);
+      background: rgba(255, 255, 255, 0.93);
+      border: 2px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
     }
 
     .hud {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 16px;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 14px;
       font-weight: 700;
-      background: rgba(255,255,255,0.6);
+      background: rgba(255, 255, 255, 0.7);
+      font-size: 0.94rem;
     }
 
     canvas {
-      display: block;
       width: 100%;
       height: auto;
+      display: block;
       background: linear-gradient(180deg, var(--sky-top), var(--sky-bottom));
       cursor: pointer;
       touch-action: manipulation;
     }
 
-    .controls {
-      padding: 12px 16px 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    button {
-      border: 0;
-      border-radius: 999px;
-      padding: 10px 14px;
-      font-weight: 700;
-      cursor: pointer;
-      color: white;
-      background: linear-gradient(135deg, #ff8f00, #ff6d00);
-      box-shadow: 0 6px 16px rgba(255,109,0,0.25);
-    }
-
-    button.secondary {
-      background: linear-gradient(135deg, #4caf50, #2e7d32);
-      box-shadow: 0 6px 16px rgba(46,125,50,0.25);
-    }
-
     .hint {
-      font-size: 0.95rem;
+      padding: 10px 14px 14px;
+      font-size: 0.9rem;
       color: #4b5563;
       text-align: center;
-      padding: 0 16px 16px;
     }
   </style>
 </head>
 <body>
-  <div class="game-shell">
+  <div class="shell">
     <div class="hud">
       <div>Score: <span id="score">0</span></div>
       <div>Best: <span id="best">0</span></div>
+      <div>Mode: <span id="mode">Portal Flappy</span></div>
+      <div>Coins: <span id="coins">0</span></div>
     </div>
-    <canvas id="game" width="480" height="640"></canvas>
-    <div class="controls">
-      <button id="startBtn">Start Game</button>
-      <button id="restartBtn" class="secondary">Restart</button>
-    </div>
-    <div class="hint">Tap or press Space to flap. Avoid the pipes and stay above the ground.</div>
+    <canvas id="game" width="560" height="700"></canvas>
+    <div class="hint">Tap/click or press Space. Go through giant middle portals. Hidden coins are small and tricky to reach.</div>
   </div>
 
   <script>
@@ -105,234 +85,742 @@
     const ctx = canvas.getContext('2d');
     const scoreEl = document.getElementById('score');
     const bestEl = document.getElementById('best');
-    const startBtn = document.getElementById('startBtn');
-    const restartBtn = document.getElementById('restartBtn');
+    const modeEl = document.getElementById('mode');
+    const coinsEl = document.getElementById('coins');
 
-    const WIDTH = canvas.width;
-    const HEIGHT = canvas.height;
-    const GRAVITY = 0.38;
-    const FLAP = -6.8;
-    const PIPE_WIDTH = 70;
-    const PIPE_GAP = 170;
+    const W = canvas.width;
+    const H = canvas.height;
+
+    const GROUND_H = 92;
+    const PIPE_W = 78;
+    const PIPE_GAP = 184;
     const PIPE_SPEED = 2.6;
-    const GROUND_HEIGHT = 92;
+    const BIG_PORTAL_R = 62;
+    const BASE_PIPE_TIMER = 95;
+    const ORB_BOOST_FRAMES = 260;
 
-    let bird;
-    let pipes = [];
+    const FLAP_G = 0.4;
+    const FLAP_V = -7.2;
+
+    let state = 'ready';
     let score = 0;
-    let best = Number(localStorage.getItem('flappy-best') || 0);
-    let gameState = 'ready';
-    let spawnTimer = 0;
+    let best = Number(localStorage.getItem('portal-remix-best') || 0);
+    let coinCount = 0;
+    let deathCount = Number(localStorage.getItem('portal-remix-deaths') || 0);
+    let adRequired = false;
+    let adVisible = false;
+    let adTimer = 0;
+    let adCooldown = 0;
+    let activeEffect = 'None';
+    let effectFrames = 0;
+    let gravityMul = 1;
+    let flapMul = 1;
+    let pipeMul = 1;
+    let magnetFrames = 0;
+    let failReason = 'Avoid obstacles.';
 
-    function resetBird() {
-      bird = {
-        x: 120,
-        y: HEIGHT / 2 - 40,
-        radius: 20,
-        velocity: 0,
-        rotation: 0
+    let pipeTimer = 0;
+    let portalCooldown = 0;
+    let pipes = [];
+    let portals = [];
+    let hiddenCoins = [];
+    let greenOrbs = [];
+    let orbSpawnTimer = 0;
+    let orbPending = false;
+    let orbHold = false;
+    let orbHoldY = 0;
+    let orbActiveFrames = 0;
+
+    const portalKinds = ['lowGravity', 'highGravity', 'boostFlap', 'slowPipes', 'magnet', 'coinRain'];
+
+    const player = {
+      x: 140,
+      y: H * 0.42,
+      vy: 0,
+      r: 18,
+      rotation: 0
+    };
+
+    function resetRun() {
+      if (adVisible) return;
+      state = 'ready';
+      score = 0;
+      coinCount = 0;
+      failReason = 'Avoid obstacles.';
+      activeEffect = 'None';
+      effectFrames = 0;
+      gravityMul = 1;
+      flapMul = 1;
+      pipeMul = 1;
+      magnetFrames = 0;
+      pipeTimer = 0;
+      portalCooldown = 0;
+      pipes = [];
+      portals = [];
+      hiddenCoins = [];
+      greenOrbs = [];
+      orbSpawnTimer = 0;
+      orbPending = false;
+      orbHold = false;
+      orbHoldY = 0;
+      orbActiveFrames = 0;
+      player.y = H * 0.42;
+      player.vy = 0;
+      player.rotation = 0;
+      updateHud();
+    }
+
+    function updateHud() {
+      scoreEl.textContent = score;
+      bestEl.textContent = best;
+      coinsEl.textContent = coinCount;
+      const effectText = activeEffect === 'None' ? 'Portal Flappy' : `Portal Flappy • ${activeEffect}`;
+      modeEl.textContent = orbPending ? `${effectText} • Orb Ready (Press N)` : effectText;
+    }
+
+    function getDifficulty() {
+      const tier = Math.floor(score / 8);
+      return {
+        speedMul: 1 + Math.min(0.95, tier * 0.06),
+        spawnInterval: Math.max(60, BASE_PIPE_TIMER - tier * 2),
+        gap: Math.max(136, PIPE_GAP - tier * 3)
       };
     }
 
-    function resetGame() {
-      resetBird();
-      pipes = [];
-      score = 0;
-      spawnTimer = 0;
-      gameState = 'ready';
-      updateScore();
+    function resetEffects() {
+      activeEffect = 'None';
+      effectFrames = 0;
+      gravityMul = 1;
+      flapMul = 1;
+      pipeMul = 1;
+      magnetFrames = 0;
     }
 
-    function updateScore() {
-      scoreEl.textContent = score;
-      bestEl.textContent = best;
+    function setEffect(name, frames, config) {
+      activeEffect = name;
+      effectFrames = frames;
+      gravityMul = config.gravityMul ?? 1;
+      flapMul = config.flapMul ?? 1;
+      pipeMul = config.pipeMul ?? 1;
+      magnetFrames = config.magnetFrames ?? 0;
+    }
+
+    function applyPortalKind(kind) {
+      score += 10;
+      if (kind === 'lowGravity') {
+        setEffect('Low Gravity', 300, { gravityMul: 0.55, flapMul: 1.05 });
+      } else if (kind === 'highGravity') {
+        setEffect('Heavy Gravity', 300, { gravityMul: 1.55, flapMul: 0.9 });
+      } else if (kind === 'boostFlap') {
+        setEffect('Boost Flap', 300, { gravityMul: 1, flapMul: 1.45 });
+      } else if (kind === 'slowPipes') {
+        setEffect('Slow Pipes', 300, { gravityMul: 1, flapMul: 1, pipeMul: 0.72 });
+      } else if (kind === 'magnet') {
+        setEffect('Coin Magnet', 360, { gravityMul: 1, flapMul: 1, pipeMul: 1, magnetFrames: 360 });
+      } else if (kind === 'coinRain') {
+        activeEffect = 'Coin Rain';
+        effectFrames = 180;
+        coinCount += 12;
+        score += 12;
+      }
+      best = Math.max(best, score);
+      localStorage.setItem('portal-remix-best', String(best));
+      updateHud();
     }
 
     function startGame() {
-      if (gameState === 'over') {
-        resetGame();
+      if (adVisible) return;
+      if (state === 'over') {
+        resetRun();
       }
-      gameState = 'playing';
-      startBtn.textContent = 'Playing';
-      startBtn.disabled = true;
+      state = 'playing';
     }
 
-    function flap() {
-      if (gameState === 'ready') {
+    function startAdBreak() {
+      adRequired = false;
+      adVisible = true;
+      adTimer = 8;
+      adCooldown = 0;
+      state = 'over';
+      failReason = 'Ad break';
+      updateHud();
+    }
+
+    function finishAdBreak() {
+      adVisible = false;
+      adTimer = 0;
+      resetRun();
+    }
+
+    function endGame(reason) {
+      if (adVisible) return;
+      state = 'over';
+      failReason = reason;
+      deathCount += 1;
+      localStorage.setItem('portal-remix-deaths', String(deathCount));
+      best = Math.max(best, score);
+      localStorage.setItem('portal-remix-best', String(best));
+      updateHud();
+      if (deathCount >= 6) {
+        deathCount = 0;
+        localStorage.setItem('portal-remix-deaths', '0');
+        adRequired = true;
+        startAdBreak();
+        return;
+      }
+    }
+
+    function tapAction() {
+      if (adVisible) {
+        if (adTimer <= 0) {
+          finishAdBreak();
+        }
+        return;
+      }
+      if (state === 'ready') {
         startGame();
       }
-      if (gameState === 'playing') {
-        bird.velocity = FLAP;
+      if (state !== 'playing') return;
+      if (orbHold) return;
+
+      player.vy = FLAP_V;
+    }
+
+    function spawnPipe(gapSize = PIPE_GAP) {
+      const minTop = 70;
+      const maxTop = H - GROUND_H - gapSize - 70;
+      const topH = minTop + Math.random() * (maxTop - minTop);
+      const fakeTop = Math.random() < 0.5;
+      const fakeSpot = fakeTop
+        ? {
+            x: W + 20 + (PIPE_W - 48) / 2,
+            y: 34 + Math.random() * Math.max(20, topH - 88),
+            w: 48,
+            h: 56
+          }
+        : {
+            x: W + 20 + (PIPE_W - 48) / 2,
+            y: topH + PIPE_GAP + 16 + Math.random() * Math.max(18, H - GROUND_H - (topH + PIPE_GAP) - 88),
+            w: 48,
+            h: 56
+          };
+
+      const newPipe = {
+        x: W + 20,
+        topH,
+        bottomY: topH + gapSize,
+        passed: false,
+        fakeSpot,
+        fakeCoin: {
+          x: fakeSpot.x + fakeSpot.w / 2,
+          y: fakeSpot.y + fakeSpot.h / 2,
+          r: 12,
+          value: 12,
+          collected: false,
+          life: 520
+        }
+      };
+      const prev = pipes[pipes.length - 1];
+      pipes.push(newPipe);
+
+      if (prev) {
+        spawnBigPortalBetween(prev, newPipe);
+        spawnHiddenCoinsBetween(prev, newPipe);
       }
     }
 
-    function spawnPipe() {
-      const minY = 80;
-      const maxY = HEIGHT - GROUND_HEIGHT - PIPE_GAP - 80;
-      const topHeight = minY + Math.random() * (maxY - minY);
-      pipes.push({
-        x: WIDTH + 20,
-        topHeight,
-        bottomY: topHeight + PIPE_GAP
+    function spawnGreenOrb() {
+      let y = 120 + Math.random() * (H - GROUND_H - 220);
+      if (pipes.length > 0) {
+        const p = pipes[pipes.length - 1];
+        y = p.topH + (p.bottomY - p.topH) / 2 + (Math.random() * 70 - 35);
+      }
+      greenOrbs.push({
+        x: W + 38,
+        y,
+        r: 14,
+        life: 560
       });
     }
 
-    function update() {
-      if (gameState !== 'playing') return;
+    function spawnHiddenCoinsBetween(leftPipe, rightPipe) {
+      if (!leftPipe || !rightPipe) return;
+      const laneStart = leftPipe.x + PIPE_W;
+      const laneEnd = rightPipe.x;
+      const centerX = (laneStart + laneEnd) / 2;
+      const gapCenter = leftPipe.topH + PIPE_GAP / 2;
 
-      bird.velocity += GRAVITY;
-      bird.y += bird.velocity;
-      bird.rotation = Math.max(-0.8, Math.min(0.9, bird.velocity / 12));
+      const roll = Math.random();
+      if (roll < 0.55) {
+        const topSide = Math.random() < 0.5;
+        const offsetY = topSide ? -PIPE_GAP * (0.38 + Math.random() * 0.08) : PIPE_GAP * (0.34 + Math.random() * 0.08);
+        hiddenCoins.push({
+          x: centerX + (Math.random() * 24 - 12),
+          y: gapCenter + offsetY,
+          r: 7,
+          value: 5,
+          collected: false,
+          alpha: 0.55,
+          life: 520
+        });
+      }
 
-      spawnTimer += 1;
-      if (spawnTimer > 95) {
-        spawnPipe();
-        spawnTimer = 0;
+      if (roll > 0.78) {
+        hiddenCoins.push({
+          x: centerX + (Math.random() * 28 - 14),
+          y: leftPipe.topH + 24 + Math.random() * 18,
+          r: 10,
+          value: 8,
+          collected: false,
+          alpha: 0.42,
+          life: 520
+        });
+      }
+    }
+
+    function spawnBigPortalBetween(leftPipe, rightPipe) {
+      const laneStart = leftPipe.x + PIPE_W;
+      const laneEnd = rightPipe.x;
+      if (laneEnd - laneStart < BIG_PORTAL_R * 1.1) return;
+
+      const leftCenterY = leftPipe.topH + PIPE_GAP / 2;
+      const rightCenterY = rightPipe.topH + PIPE_GAP / 2;
+      const kind = portalKinds[(Math.random() * portalKinds.length) | 0];
+
+      portals.push({
+        x: (laneStart + laneEnd) / 2,
+        y: (leftCenterY + rightCenterY) / 2,
+        r: BIG_PORTAL_R,
+        kind,
+        triggered: false,
+        required: true,
+        life: 520
+      });
+    }
+
+    function circleRectHit(cx, cy, cr, rx, ry, rw, rh) {
+      const nx = Math.max(rx, Math.min(cx, rx + rw));
+      const ny = Math.max(ry, Math.min(cy, ry + rh));
+      const dx = cx - nx;
+      const dy = cy - ny;
+      return dx * dx + dy * dy < cr * cr;
+    }
+
+    function circleHitsCircle(ax, ay, ar, bx, by, br) {
+      const dx = ax - bx;
+      const dy = ay - by;
+      return dx * dx + dy * dy < (ar + br) * (ar + br);
+    }
+
+    function rectContainsCircle(cx, cy, cr, rx, ry, rw, rh) {
+      return cx - cr < rx && cx + cr > rx + rw && cy - cr < ry && cy + cr > ry + rh;
+    }
+
+    function updatePortalFlappy() {
+      const difficulty = getDifficulty();
+      const orbSpeedMul = orbActiveFrames > 0 ? 1.85 : 1;
+      const currentPipeSpeed = PIPE_SPEED * pipeMul * difficulty.speedMul * orbSpeedMul;
+
+      if (effectFrames > 0) {
+        effectFrames -= 1;
+        if (effectFrames <= 0) {
+          resetEffects();
+        }
+      }
+
+      if (magnetFrames > 0) {
+        magnetFrames -= 1;
+      }
+
+      if (orbActiveFrames > 0) {
+        orbActiveFrames -= 1;
+      }
+
+      pipeTimer += 1;
+      if (pipeTimer >= difficulty.spawnInterval) {
+        spawnPipe(difficulty.gap);
+        pipeTimer = 0;
+      }
+
+      orbSpawnTimer += 1;
+      if (orbSpawnTimer >= Math.max(140, 300 - Math.floor(score / 3))) {
+        spawnGreenOrb();
+        orbSpawnTimer = 0;
+      }
+
+      if (orbHold) {
+        player.vy = 0;
+        player.y = orbHoldY;
+      } else {
+        player.vy += FLAP_G * gravityMul;
+        player.y += player.vy;
+      }
+      player.rotation = Math.max(-0.9, Math.min(1.1, player.vy / (11 * flapMul)));
+
+      pipes.forEach((p) => { p.x -= currentPipeSpeed; });
+      portals.forEach((p) => {
+        p.x -= currentPipeSpeed;
+        p.life -= 1;
+      });
+      greenOrbs.forEach((o) => {
+        o.x -= currentPipeSpeed;
+        o.life -= 1;
+      });
+
+      for (let i = pipes.length - 1; i >= 0; i -= 1) {
+        const p = pipes[i];
+        const fakeSpot = p.fakeSpot;
+        const inFakeSpot = fakeSpot && circleHitsCircle(player.x, player.y, player.r, fakeSpot.x + fakeSpot.w / 2, fakeSpot.y + fakeSpot.h / 2, Math.max(fakeSpot.w, fakeSpot.h) / 2 - 4);
+        const topHit = !inFakeSpot && circleRectHit(player.x, player.y, player.r, p.x, 0, PIPE_W, p.topH);
+        const bottomHit = !inFakeSpot && circleRectHit(player.x, player.y, player.r, p.x, p.bottomY, PIPE_W, H - GROUND_H - p.bottomY);
+        if (topHit || bottomHit) {
+          endGame('Hit a pipe.');
+          return;
+        }
+
+        if (!p.passed && p.x + PIPE_W < player.x) {
+          p.passed = true;
+          score += 1;
+          updateHud();
+        }
+
+        if (p.x + PIPE_W < -30) pipes.splice(i, 1);
+      }
+
+      for (let i = portals.length - 1; i >= 0; i -= 1) {
+        const p = portals[i];
+        const dx = player.x - p.x;
+        const dy = player.y - p.y;
+        const touching = dx * dx + dy * dy < (player.r + p.r) * (player.r + p.r);
+
+        if (touching && !p.triggered && portalCooldown <= 0) {
+          p.triggered = true;
+          portalCooldown = 45;
+          applyPortalKind(p.kind);
+          updateHud();
+          return;
+        }
+
+        const missedRequired = p.required && !p.triggered && p.x + p.r < player.x;
+        if (missedRequired) {
+          endGame('You must go through the giant portal.');
+          return;
+        }
+      }
+
+      portals = portals.filter((p) => p.x + p.r > -40 && p.life > 0);
+      greenOrbs = greenOrbs.filter((o) => o.life > 0 && o.x + o.r > -20);
+
+      for (let i = greenOrbs.length - 1; i >= 0; i -= 1) {
+        const o = greenOrbs[i];
+        if (circleHitsCircle(player.x, player.y, player.r, o.x, o.y, o.r)) {
+          greenOrbs.splice(i, 1);
+          orbPending = true;
+          orbHold = true;
+          orbHoldY = player.y;
+          activeEffect = 'Green Orb Ready';
+          updateHud();
+        }
+      }
+
+      hiddenCoins.forEach((c) => {
+        c.x -= currentPipeSpeed;
+        c.life -= 1;
+        if (magnetFrames > 0) {
+          c.x += (player.x - c.x) * 0.04;
+          c.y += (player.y - c.y) * 0.04;
+        }
+      });
+      hiddenCoins = hiddenCoins.filter((c) => c.life > 0 && c.x + c.r > -20);
+
+      for (let i = hiddenCoins.length - 1; i >= 0; i -= 1) {
+        const c = hiddenCoins[i];
+        if (circleHitsCircle(player.x, player.y, player.r, c.x, c.y, c.r)) {
+          hiddenCoins.splice(i, 1);
+          coinCount += c.value;
+          score += c.value;
+          best = Math.max(best, score);
+          localStorage.setItem('portal-remix-best', String(best));
+          updateHud();
+        }
       }
 
       for (let i = pipes.length - 1; i >= 0; i -= 1) {
         const p = pipes[i];
-        p.x -= PIPE_SPEED;
-
-        if (p.x + PIPE_WIDTH < bird.x && !p.passed) {
-          p.passed = true;
-          score += 1;
-          best = Math.max(best, score);
-          localStorage.setItem('flappy-best', best);
-          updateScore();
-        }
-
-        const hitTop = bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + PIPE_WIDTH && bird.y - bird.radius < p.topHeight;
-        const hitBottom = bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + PIPE_WIDTH && bird.y + bird.radius > p.bottomY;
-        if (hitTop || hitBottom) {
-          gameState = 'over';
-          startBtn.textContent = 'Start Game';
-          startBtn.disabled = false;
-        }
-
-        if (p.x + PIPE_WIDTH < -20) {
-          pipes.splice(i, 1);
+        if (p.fakeCoin && !p.fakeCoin.collected) {
+          p.fakeCoin.x -= currentPipeSpeed;
+          p.fakeCoin.life -= 1;
+          if (magnetFrames > 0) {
+            p.fakeCoin.x += (player.x - p.fakeCoin.x) * 0.05;
+            p.fakeCoin.y += (player.y - p.fakeCoin.y) * 0.05;
+          }
+          if (circleHitsCircle(player.x, player.y, player.r, p.fakeCoin.x, p.fakeCoin.y, p.fakeCoin.r)) {
+            p.fakeCoin.collected = true;
+            coinCount += p.fakeCoin.value;
+            score += p.fakeCoin.value;
+            best = Math.max(best, score);
+            localStorage.setItem('portal-remix-best', String(best));
+            updateHud();
+          }
+          if (p.fakeCoin.life <= 0) {
+            p.fakeCoin.collected = true;
+          }
         }
       }
 
-      if (bird.y + bird.radius >= HEIGHT - GROUND_HEIGHT) {
-        bird.y = HEIGHT - GROUND_HEIGHT - bird.radius;
-        gameState = 'over';
-        startBtn.textContent = 'Start Game';
-        startBtn.disabled = false;
-      }
-
-      if (bird.y - bird.radius <= 0) {
-        bird.y = bird.radius;
-        bird.velocity = 0;
+      if (player.y - player.r <= 0 || player.y + player.r >= H - GROUND_H) {
+        endGame('Crashed into ceiling or ground.');
       }
     }
 
-    function drawSky() {
-      const skyGrad = ctx.createLinearGradient(0, 0, 0, HEIGHT);
-      skyGrad.addColorStop(0, '#8be2ff');
-      skyGrad.addColorStop(0.6, '#fff5b0');
-      skyGrad.addColorStop(1, '#f9ffca');
-      ctx.fillStyle = skyGrad;
-      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    function update() {
+      if (adVisible) {
+        if (adTimer > 0) {
+          adTimer -= 1 / 60;
+        }
+        return;
+      }
 
-      const sun = { x: 380, y: 100, r: 42 };
-      ctx.beginPath();
-      ctx.arc(sun.x, sun.y, sun.r, 0, Math.PI * 2);
+      if (state !== 'playing') return;
+
+      if (portalCooldown > 0) portalCooldown -= 1;
+
+      updatePortalFlappy();
+    }
+
+    function drawSky() {
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, '#82e4ff');
+      grad.addColorStop(0.6, '#d4f8ff');
+      grad.addColorStop(1, '#fff6be');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
       ctx.fillStyle = '#ffd54f';
+      ctx.beginPath();
+      ctx.arc(W - 95, 95, 42, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      ctx.fillRect(0, 0, WIDTH, 140);
-
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
       for (let i = 0; i < 6; i += 1) {
-        const x = 50 + i * 75;
-        const y = 80 + (i % 2) * 30;
-        ctx.fillStyle = 'rgba(255,255,255,0.7)';
-        ctx.fillRect(x, y, 12, 12);
+        const x = 55 + i * 88;
+        const y = 78 + (i % 2) * 26;
+        ctx.beginPath();
+        ctx.arc(x, y, 13, 0, Math.PI * 2);
+        ctx.arc(x + 14, y - 4, 16, 0, Math.PI * 2);
+        ctx.arc(x + 32, y, 11, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
     function drawGround() {
-      ctx.fillStyle = '#7bc96f';
-      ctx.fillRect(0, HEIGHT - GROUND_HEIGHT, WIDTH, GROUND_HEIGHT);
-
-      ctx.fillStyle = '#5aa64c';
-      for (let i = 0; i < 12; i += 1) {
-        const x = (i * 44) % (WIDTH + 44) - 22;
-        const y = HEIGHT - GROUND_HEIGHT + 12;
-        ctx.fillRect(x, y, 24, 10);
+      ctx.fillStyle = getCss('--ground');
+      ctx.fillRect(0, H - GROUND_H, W, GROUND_H);
+      ctx.fillStyle = getCss('--ground-dark');
+      for (let i = 0; i < 15; i += 1) {
+        ctx.fillRect(i * 40 - 16, H - GROUND_H + 14, 24, 10);
       }
     }
 
     function drawPipes() {
       pipes.forEach((p) => {
-        ctx.fillStyle = '#4caf50';
-        ctx.fillRect(p.x, 0, PIPE_WIDTH, p.topHeight);
-        ctx.fillStyle = '#2e7d32';
-        ctx.fillRect(p.x, p.topHeight - 12, PIPE_WIDTH, 12);
+        ctx.fillStyle = getCss('--pipe');
+        ctx.fillRect(p.x, 0, PIPE_W, p.topH);
+        ctx.fillStyle = getCss('--pipe-dark');
+        ctx.fillRect(p.x, p.topH - 13, PIPE_W, 13);
 
-        ctx.fillStyle = '#4caf50';
-        ctx.fillRect(p.x, p.bottomY, PIPE_WIDTH, HEIGHT - GROUND_HEIGHT - p.bottomY);
-        ctx.fillStyle = '#2e7d32';
-        ctx.fillRect(p.x, p.bottomY, PIPE_WIDTH, 12);
+        ctx.fillStyle = getCss('--pipe');
+        ctx.fillRect(p.x, p.bottomY, PIPE_W, H - GROUND_H - p.bottomY);
+        ctx.fillStyle = getCss('--pipe-dark');
+        ctx.fillRect(p.x, p.bottomY, PIPE_W, 13);
+
+        if (p.fakeSpot) {
+          ctx.save();
+          ctx.globalAlpha = 0.9;
+          ctx.fillStyle = '#050505';
+          ctx.fillRect(p.fakeSpot.x, p.fakeSpot.y, p.fakeSpot.w, p.fakeSpot.h);
+          ctx.fillStyle = 'rgba(80,80,80,0.7)';
+          ctx.fillRect(p.fakeSpot.x + 4, p.fakeSpot.y + 4, p.fakeSpot.w - 8, p.fakeSpot.h - 8);
+          ctx.strokeStyle = '#111';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(p.fakeSpot.x + 1, p.fakeSpot.y + 1, p.fakeSpot.w - 2, p.fakeSpot.h - 2);
+          ctx.restore();
+        }
       });
     }
 
-    function drawBird() {
+    function drawPortals() {
+      portals.forEach((p) => {
+        const portalColors = {
+          lowGravity: '#8b5cf6',
+          highGravity: '#ef4444',
+          boostFlap: '#22c55e',
+          slowPipes: '#f97316',
+          magnet: '#06b6d4',
+          coinRain: '#eab308'
+        };
+        const ring = portalColors[p.kind] || getCss('--portal');
+        const pulse = 0.86 + Math.sin((Date.now() / 140) + p.y * 0.02) * 0.16;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.strokeStyle = ring;
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r * pulse, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r * 0.58, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = ring;
+        if (p.kind === 'lowGravity') {
+          ctx.fillRect(-10, -4, 20, 8);
+        } else if (p.kind === 'highGravity') {
+          ctx.beginPath();
+          ctx.arc(0, 0, 8, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (p.kind === 'boostFlap') {
+          ctx.fillRect(-4, -10, 8, 20);
+        } else if (p.kind === 'slowPipes') {
+          ctx.fillRect(-10, -10, 20, 20);
+        } else if (p.kind === 'magnet') {
+          ctx.beginPath();
+          ctx.arc(0, 0, 8, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillRect(-8, -8, 16, 16);
+        }
+        ctx.restore();
+      });
+    }
+
+    function drawGreenOrbs() {
+      greenOrbs.forEach((o) => {
+        ctx.save();
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#bbf7d0';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.restore();
+      });
+    }
+
+    function drawHiddenCoins() {
+      hiddenCoins.forEach((c) => {
+        ctx.save();
+        ctx.globalAlpha = c.alpha;
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff7cc';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      pipes.forEach((p) => {
+        if (p.fakeCoin && !p.fakeCoin.collected) {
+          ctx.save();
+          ctx.fillStyle = '#ffd54f';
+          ctx.beginPath();
+          ctx.arc(p.fakeCoin.x, p.fakeCoin.y, p.fakeCoin.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#fff9cc';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
+    }
+
+    function drawBirdOrSquare() {
       ctx.save();
-      ctx.translate(bird.x, bird.y);
-      ctx.rotate(bird.rotation);
-      ctx.fillStyle = '#ffca28';
+      ctx.translate(player.x, player.y);
+      ctx.rotate(player.rotation * 0.65);
+      ctx.fillStyle = getCss('--bird');
       ctx.beginPath();
-      ctx.arc(0, 0, bird.radius, 0, Math.PI * 2);
+      ctx.arc(0, 0, player.r, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#ff9800';
+      ctx.fillStyle = '#fb923c';
       ctx.beginPath();
-      ctx.arc(8, -4, 7, 0, Math.PI * 2);
+      ctx.arc(8, -4, 6, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#1f2937';
-      ctx.fillRect(-6, -2, 8, 4);
+      ctx.fillStyle = '#111827';
+      ctx.beginPath();
+      ctx.arc(5, -6, 3, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
     }
 
-    function drawStartOverlay() {
-      if (gameState !== 'ready') return;
-      ctx.fillStyle = 'rgba(255,255,255,0.55)';
-      ctx.fillRect(0, 0, WIDTH, HEIGHT);
-      ctx.fillStyle = '#1f2937';
-      ctx.font = 'bold 28px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('Sunny Flappy Bird', WIDTH / 2, HEIGHT / 2 - 30);
-      ctx.font = '16px Arial';
-      ctx.fillText('Tap to start', WIDTH / 2, HEIGHT / 2 + 8);
-      ctx.fillText('Avoid the pipes and flap your wings', WIDTH / 2, HEIGHT / 2 + 34);
-      ctx.textAlign = 'left';
+    function drawOverlays() {
+      if (adVisible) {
+        ctx.fillStyle = 'rgba(0,0,0,0.78)';
+        ctx.fillRect(0, 0, W, H);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 34px Arial';
+        ctx.fillText('Ad Break', W / 2, H / 2 - 46);
+        ctx.font = '18px Arial';
+        ctx.fillText('Watch this short ad to continue', W / 2, H / 2 - 12);
+        ctx.fillText(`Continue in ${Math.max(0, Math.ceil(adTimer))}s`, W / 2, H / 2 + 18);
+        ctx.fillText(adTimer <= 0 ? 'Tap to close ad' : 'Please wait', W / 2, H / 2 + 48);
+        ctx.textAlign = 'left';
+        return;
+      }
+
+      if (state === 'ready') {
+        ctx.fillStyle = 'rgba(255,255,255,0.56)';
+        ctx.fillRect(0, 0, W, H);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#1f2937';
+        ctx.font = 'bold 30px Arial';
+        ctx.fillText('Portal Flappy Remix', W / 2, H / 2 - 40);
+        ctx.font = '16px Arial';
+        ctx.fillText('Go through giant portals centered between pipes', W / 2, H / 2 - 6);
+        ctx.fillText('Hidden coins are tiny, rare, and off the main path', W / 2, H / 2 + 22);
+        ctx.fillText('Portals can change gravity, flap power, pipe speed, or coins', W / 2, H / 2 + 50);
+        ctx.fillText('Green orb: touch it, then press N to activate turbo', W / 2, H / 2 + 66);
+        ctx.fillText('Tap / Space to start', W / 2, H / 2 + 80);
+        ctx.textAlign = 'left';
+      }
+
+      if (state === 'over') {
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fillRect(0, 0, W, H);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 34px Arial';
+        ctx.fillText('Game Over', W / 2, H / 2 - 20);
+        ctx.font = '18px Arial';
+        ctx.fillText(`Score: ${score}`, W / 2, H / 2 + 10);
+        ctx.fillText(`Deaths: ${deathCount}/6`, W / 2, H / 2 + 28);
+        ctx.fillText(failReason, W / 2, H / 2 + 40);
+        ctx.fillText('Tap / Space to restart', W / 2, H / 2 + 70);
+        ctx.textAlign = 'left';
+      }
     }
 
-    function drawGameOverOverlay() {
-      if (gameState !== 'over') return;
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      ctx.fillRect(0, 0, WIDTH, HEIGHT);
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 28px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('Game Over', WIDTH / 2, HEIGHT / 2 - 24);
-      ctx.font = '18px Arial';
-      ctx.fillText(`Score: ${score}`, WIDTH / 2, HEIGHT / 2 + 8);
-      ctx.fillText(`Best: ${best}`, WIDTH / 2, HEIGHT / 2 + 34);
-      ctx.font = '15px Arial';
-      ctx.fillText('Tap or press restart', WIDTH / 2, HEIGHT / 2 + 62);
-      ctx.textAlign = 'left';
+    function getCss(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     }
 
     function draw() {
       drawSky();
       drawPipes();
-      drawBird();
+      drawPortals();
+      drawGreenOrbs();
+      drawHiddenCoins();
+      drawBirdOrSquare();
       drawGround();
-      drawStartOverlay();
-      drawGameOverOverlay();
+      drawOverlays();
     }
 
     function loop() {
@@ -341,31 +829,55 @@
       requestAnimationFrame(loop);
     }
 
-    canvas.addEventListener('pointerdown', () => {
-      flap();
-    });
-
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space' || e.code === 'ArrowUp') {
         e.preventDefault();
-        flap();
+        if (adVisible) {
+          if (adTimer <= 0) finishAdBreak();
+          return;
+        }
+        if (state === 'over') {
+          if (adRequired) {
+            startAdBreak();
+            return;
+          }
+          resetRun();
+          startGame();
+        } else {
+          tapAction();
+        }
+      }
+
+      if (e.key === 'n' || e.key === 'N') {
+        if (state === 'playing' && orbPending) {
+          orbPending = false;
+          orbHold = false;
+          orbActiveFrames = ORB_BOOST_FRAMES;
+          activeEffect = 'Orb Turbo';
+          effectFrames = Math.max(effectFrames, ORB_BOOST_FRAMES);
+          updateHud();
+        }
       }
     });
 
-    startBtn.addEventListener('click', () => {
-      if (gameState === 'ready' || gameState === 'over') {
-        resetGame();
+    canvas.addEventListener('pointerdown', () => {
+      if (adVisible) {
+        if (adTimer <= 0) finishAdBreak();
+        return;
+      }
+      if (state === 'over') {
+        if (adRequired) {
+          startAdBreak();
+          return;
+        }
+        resetRun();
         startGame();
+      } else {
+        tapAction();
       }
     });
 
-    restartBtn.addEventListener('click', () => {
-      resetGame();
-      startGame();
-    });
-
-    updateScore();
-    resetGame();
+    resetRun();
     loop();
   </script>
 </body>
