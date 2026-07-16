@@ -96,6 +96,8 @@
     const PIPE_GAP = 184;
     const PIPE_SPEED = 2.6;
     const BIG_PORTAL_R = 62;
+    const BASE_PIPE_TIMER = 95;
+    const ORB_BOOST_FRAMES = 260;
 
     const FLAP_G = 0.4;
     const FLAP_V = -7.2;
@@ -122,6 +124,12 @@
     let pipes = [];
     let portals = [];
     let hiddenCoins = [];
+    let greenOrbs = [];
+    let orbSpawnTimer = 0;
+    let orbPending = false;
+    let orbHold = false;
+    let orbHoldY = 0;
+    let orbActiveFrames = 0;
 
     const portalKinds = ['lowGravity', 'highGravity', 'boostFlap', 'slowPipes', 'magnet', 'coinRain'];
 
@@ -150,6 +158,12 @@
       pipes = [];
       portals = [];
       hiddenCoins = [];
+      greenOrbs = [];
+      orbSpawnTimer = 0;
+      orbPending = false;
+      orbHold = false;
+      orbHoldY = 0;
+      orbActiveFrames = 0;
       player.y = H * 0.42;
       player.vy = 0;
       player.rotation = 0;
@@ -160,7 +174,17 @@
       scoreEl.textContent = score;
       bestEl.textContent = best;
       coinsEl.textContent = coinCount;
-      modeEl.textContent = activeEffect === 'None' ? 'Portal Flappy' : `Portal Flappy • ${activeEffect}`;
+      const effectText = activeEffect === 'None' ? 'Portal Flappy' : `Portal Flappy • ${activeEffect}`;
+      modeEl.textContent = orbPending ? `${effectText} • Orb Ready (Press N)` : effectText;
+    }
+
+    function getDifficulty() {
+      const tier = Math.floor(score / 8);
+      return {
+        speedMul: 1 + Math.min(0.95, tier * 0.06),
+        spawnInterval: Math.max(60, BASE_PIPE_TIMER - tier * 2),
+        gap: Math.max(136, PIPE_GAP - tier * 3)
+      };
     }
 
     function resetEffects() {
@@ -257,13 +281,14 @@
         startGame();
       }
       if (state !== 'playing') return;
+      if (orbHold) return;
 
       player.vy = FLAP_V;
     }
 
-    function spawnPipe() {
+    function spawnPipe(gapSize = PIPE_GAP) {
       const minTop = 70;
-      const maxTop = H - GROUND_H - PIPE_GAP - 70;
+      const maxTop = H - GROUND_H - gapSize - 70;
       const topH = minTop + Math.random() * (maxTop - minTop);
       const fakeTop = Math.random() < 0.5;
       const fakeSpot = fakeTop
@@ -283,7 +308,7 @@
       const newPipe = {
         x: W + 20,
         topH,
-        bottomY: topH + PIPE_GAP,
+        bottomY: topH + gapSize,
         passed: false,
         fakeSpot,
         fakeCoin: {
@@ -302,6 +327,20 @@
         spawnBigPortalBetween(prev, newPipe);
         spawnHiddenCoinsBetween(prev, newPipe);
       }
+    }
+
+    function spawnGreenOrb() {
+      let y = 120 + Math.random() * (H - GROUND_H - 220);
+      if (pipes.length > 0) {
+        const p = pipes[pipes.length - 1];
+        y = p.topH + (p.bottomY - p.topH) / 2 + (Math.random() * 70 - 35);
+      }
+      greenOrbs.push({
+        x: W + 38,
+        y,
+        r: 14,
+        life: 560
+      });
     }
 
     function spawnHiddenCoinsBetween(leftPipe, rightPipe) {
@@ -378,6 +417,10 @@
     }
 
     function updatePortalFlappy() {
+      const difficulty = getDifficulty();
+      const orbSpeedMul = orbActiveFrames > 0 ? 1.85 : 1;
+      const currentPipeSpeed = PIPE_SPEED * pipeMul * difficulty.speedMul * orbSpeedMul;
+
       if (effectFrames > 0) {
         effectFrames -= 1;
         if (effectFrames <= 0) {
@@ -389,20 +432,39 @@
         magnetFrames -= 1;
       }
 
+      if (orbActiveFrames > 0) {
+        orbActiveFrames -= 1;
+      }
+
       pipeTimer += 1;
-      if (pipeTimer >= 95) {
-        spawnPipe();
+      if (pipeTimer >= difficulty.spawnInterval) {
+        spawnPipe(difficulty.gap);
         pipeTimer = 0;
       }
 
-      player.vy += FLAP_G * gravityMul;
-      player.y += player.vy;
+      orbSpawnTimer += 1;
+      if (orbSpawnTimer >= Math.max(140, 300 - Math.floor(score / 3))) {
+        spawnGreenOrb();
+        orbSpawnTimer = 0;
+      }
+
+      if (orbHold) {
+        player.vy = 0;
+        player.y = orbHoldY;
+      } else {
+        player.vy += FLAP_G * gravityMul;
+        player.y += player.vy;
+      }
       player.rotation = Math.max(-0.9, Math.min(1.1, player.vy / (11 * flapMul)));
 
-      pipes.forEach((p) => { p.x -= PIPE_SPEED * pipeMul; });
+      pipes.forEach((p) => { p.x -= currentPipeSpeed; });
       portals.forEach((p) => {
-        p.x -= PIPE_SPEED * pipeMul;
+        p.x -= currentPipeSpeed;
         p.life -= 1;
+      });
+      greenOrbs.forEach((o) => {
+        o.x -= currentPipeSpeed;
+        o.life -= 1;
       });
 
       for (let i = pipes.length - 1; i >= 0; i -= 1) {
@@ -447,8 +509,22 @@
       }
 
       portals = portals.filter((p) => p.x + p.r > -40 && p.life > 0);
+      greenOrbs = greenOrbs.filter((o) => o.life > 0 && o.x + o.r > -20);
+
+      for (let i = greenOrbs.length - 1; i >= 0; i -= 1) {
+        const o = greenOrbs[i];
+        if (circleHitsCircle(player.x, player.y, player.r, o.x, o.y, o.r)) {
+          greenOrbs.splice(i, 1);
+          orbPending = true;
+          orbHold = true;
+          orbHoldY = player.y;
+          activeEffect = 'Green Orb Ready';
+          updateHud();
+        }
+      }
+
       hiddenCoins.forEach((c) => {
-        c.x -= PIPE_SPEED * pipeMul;
+        c.x -= currentPipeSpeed;
         c.life -= 1;
         if (magnetFrames > 0) {
           c.x += (player.x - c.x) * 0.04;
@@ -472,7 +548,7 @@
       for (let i = pipes.length - 1; i >= 0; i -= 1) {
         const p = pipes[i];
         if (p.fakeCoin && !p.fakeCoin.collected) {
-          p.fakeCoin.x -= PIPE_SPEED * pipeMul;
+          p.fakeCoin.x -= currentPipeSpeed;
           p.fakeCoin.life -= 1;
           if (magnetFrames > 0) {
             p.fakeCoin.x += (player.x - p.fakeCoin.x) * 0.05;
@@ -622,6 +698,20 @@
       });
     }
 
+    function drawGreenOrbs() {
+      greenOrbs.forEach((o) => {
+        ctx.save();
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#bbf7d0';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.restore();
+      });
+    }
+
     function drawHiddenCoins() {
       hiddenCoins.forEach((c) => {
         ctx.save();
@@ -697,6 +787,7 @@
         ctx.fillText('Go through giant portals centered between pipes', W / 2, H / 2 - 6);
         ctx.fillText('Hidden coins are tiny, rare, and off the main path', W / 2, H / 2 + 22);
         ctx.fillText('Portals can change gravity, flap power, pipe speed, or coins', W / 2, H / 2 + 50);
+        ctx.fillText('Green orb: touch it, then press N to activate turbo', W / 2, H / 2 + 66);
         ctx.fillText('Tap / Space to start', W / 2, H / 2 + 80);
         ctx.textAlign = 'left';
       }
@@ -725,6 +816,7 @@
       drawSky();
       drawPipes();
       drawPortals();
+      drawGreenOrbs();
       drawHiddenCoins();
       drawBirdOrSquare();
       drawGround();
@@ -753,6 +845,17 @@
           startGame();
         } else {
           tapAction();
+        }
+      }
+
+      if (e.key === 'n' || e.key === 'N') {
+        if (state === 'playing' && orbPending) {
+          orbPending = false;
+          orbHold = false;
+          orbActiveFrames = ORB_BOOST_FRAMES;
+          activeEffect = 'Orb Turbo';
+          effectFrames = Math.max(effectFrames, ORB_BOOST_FRAMES);
+          updateHud();
         }
       }
     });
