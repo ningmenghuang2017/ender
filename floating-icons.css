@@ -4,7 +4,7 @@
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  z-index: 2;
+  z-index: 99999;
 }
 
 .floating-item {
@@ -29,12 +29,6 @@
   place-items: center;
   font-weight: 700;
   text-shadow: 0 0 8px rgba(0, 247, 255, 0.45);
-}
-
-/* Keep your UI above the floating items if needed */
-main, header, nav, section, article, footer, .container {
-  position: relative;
-  z-index: 3;
 }
 
 /* Different movement paths */
