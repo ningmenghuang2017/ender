@@ -1,0 +1,64 @@
+/* Floating media layer - visual only, does not modify content */
+.floating-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.floating-item {
+  position: absolute;
+  will-change: transform, opacity;
+  user-select: none;
+  filter: drop-shadow(0 0 8px rgba(0, 247, 255, 0.35))
+          drop-shadow(0 0 14px rgba(255, 43, 214, 0.2));
+  opacity: 0.9;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.floating-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.floating-item.emoji {
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  text-shadow: 0 0 8px rgba(0, 247, 255, 0.45);
+}
+
+/* Keep your UI above the floating items if needed */
+main, header, nav, section, article, footer, .container {
+  position: relative;
+  z-index: 3;
+}
+
+/* Different movement paths */
+@keyframes floatUpA {
+  0%   { transform: translate3d(0, 110vh, 0) rotate(0deg); opacity: 0; }
+  10%  { opacity: 0.9; }
+  90%  { opacity: 0.9; }
+  100% { transform: translate3d(14vw, -18vh, 0) rotate(260deg); opacity: 0; }
+}
+@keyframes floatUpB {
+  0%   { transform: translate3d(0, 110vh, 0) rotate(0deg); opacity: 0; }
+  12%  { opacity: 0.85; }
+  88%  { opacity: 0.85; }
+  100% { transform: translate3d(-16vw, -18vh, 0) rotate(-280deg); opacity: 0; }
+}
+@keyframes driftSide {
+  0%   { transform: translate3d(-20vw, 0, 0) rotate(0deg); opacity: 0; }
+  12%  { opacity: 0.75; }
+  88%  { opacity: 0.75; }
+  100% { transform: translate3d(120vw, 0, 0) rotate(360deg); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-layer {
+    display: none;
+  }
+}
