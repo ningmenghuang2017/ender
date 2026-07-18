@@ -16,11 +16,15 @@
     minSize: 20,
     maxSize: 54,
     minDuration: 14, // seconds
-    maxDuration: 30
+    maxDuration: 30,
+    clickBurstCountDesktop: 12,
+    clickBurstCountMobile: 7,
+    clickBurstStaggerMs: 45
   };
 
   const isMobile = window.matchMedia("(max-width: 768px)").matches;
   const MAX_ITEMS = isMobile ? SETTINGS.maxItemsMobile : SETTINGS.maxItemsDesktop;
+  const CLICK_BURST_COUNT = isMobile ? SETTINGS.clickBurstCountMobile : SETTINGS.clickBurstCountDesktop;
 
   const layer = document.createElement("div");
   layer.className = "floating-layer";
@@ -38,7 +42,7 @@
     return arr[Math.floor(Math.random() * arr.length)];
   }
 
-  function spawnItem() {
+  function spawnItem(originX = null, originY = null) {
     if (active >= MAX_ITEMS) return;
 
     const el = document.createElement("div");
@@ -51,7 +55,12 @@
     const anim = pick(animNames);
 
     // Position setup differs by animation
-    if (anim === "driftSide") {
+    if (originX !== null && originY !== null) {
+      const vx = Math.max(2, Math.min(96, (originX / window.innerWidth) * 100 + rand(-8, 8)));
+      const vy = Math.max(8, Math.min(88, (originY / window.innerHeight) * 100 + rand(-10, 10)));
+      el.style.left = `${vx}vw`;
+      el.style.top = `${vy}vh`;
+    } else if (anim === "driftSide") {
       el.style.top = `${rand(8, 88)}vh`;
       el.style.left = `-20vw`;
     } else {
@@ -85,6 +94,12 @@
     el.addEventListener("animationend", cleanup);
   }
 
+  function spawnClickBurst(x, y) {
+    for (let i = 0; i < CLICK_BURST_COUNT; i++) {
+      setTimeout(() => spawnItem(x, y), i * SETTINGS.clickBurstStaggerMs);
+    }
+  }
+
   // initial burst
   const initial = Math.floor(MAX_ITEMS * 0.8);
   for (let i = 0; i < initial; i++) {
@@ -93,6 +108,20 @@
 
   // continuous spawn
   setInterval(spawnItem, SETTINGS.spawnEveryMs);
+
+  // Burst on click for buttons and links
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const clickable = target.closest("button, a, input[type='button'], input[type='submit'], .btn");
+    if (!clickable) return;
+
+    const rect = clickable.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    spawnClickBurst(centerX, centerY);
+  }, { passive: true });
 
   // Optional: pause when tab inactive (performance)
   document.addEventListener("visibilitychange", () => {
