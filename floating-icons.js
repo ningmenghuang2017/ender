@@ -10,9 +10,9 @@
   ];
 
   const SETTINGS = {
-    maxItemsDesktop: 26,
-    maxItemsMobile: 12,
-    spawnEveryMs: 800,
+    maxItemsDesktop: 80,
+    maxItemsMobile: 36,
+    spawnEveryMs: 220,
     minSize: 20,
     maxSize: 54,
     minDuration: 14, // seconds
@@ -86,9 +86,9 @@
   }
 
   // initial burst
-  const initial = Math.floor(MAX_ITEMS * 0.7);
+  const initial = Math.floor(MAX_ITEMS * 0.8);
   for (let i = 0; i < initial; i++) {
-    setTimeout(spawnItem, i * 120);
+    setTimeout(spawnItem, i * 70);
   }
 
   // continuous spawn
