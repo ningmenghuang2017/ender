@@ -275,6 +275,43 @@
             ToggleInfo();
         });
     </script>
+
+    <script>
+    (function () {
+      function isXTrigger(el) {
+        if (!el) return false;
+
+        if (el.closest('[data-open-game-tab="true"]')) return true;
+
+        const clickable = el.closest('button, a, [role="button"], .close, .close-btn, .xBtn, #xBtn');
+        if (!clickable) return false;
+
+        const text = (clickable.textContent || '').trim().toLowerCase();
+        return text === 'x' || text === '×';
+      }
+
+      function openGameTab() {
+        const newTab = window.open('', '_blank');
+        if (!newTab) {
+          alert('Popup blocked. Please allow popups for this site.');
+          return;
+        }
+
+        const html = document.documentElement.outerHTML;
+
+        newTab.document.open();
+        newTab.document.write(html);
+        newTab.document.close();
+      }
+
+      document.addEventListener('click', function (e) {
+        if (!isXTrigger(e.target)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        openGameTab();
+      }, true);
+    })();
+    </script>
 </body>
 
 </html>
