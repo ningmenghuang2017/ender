@@ -145,7 +145,7 @@
       }
     });
 
-    // Demo blog in new tab with email prompt
+    // Blog in new tab with localStorage persistence
     document.getElementById('open-blog').addEventListener('click', function () {
       const blogWindow = window.open('', '_blank');
       if (!blogWindow) {
@@ -155,8 +155,9 @@
 
       const email = blogWindow.prompt('What is your email? This is a safety feature.') || '';
       const isEditor = email.trim().toLowerCase() === 'househuntinghh@gmail.com';
+      const STORAGE_KEY = 'damon_blog_posts_v1';
 
-      const starterPosts = [
+      const defaultPosts = [
         { title: 'Welcome to my blog!', body: 'This is my first post. I like coding and building fun things.' },
         { title: 'Today I learned', body: 'I learned how to make web pages with HTML, CSS, and JavaScript.' }
       ];
@@ -170,10 +171,20 @@
           .replaceAll("'", '&#39;');
       }
 
-      const postsHTML = starterPosts.map(p => `
+      let posts = [];
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        posts = saved ? JSON.parse(saved) : defaultPosts;
+        if (!Array.isArray(posts)) posts = defaultPosts;
+      } catch {
+        posts = defaultPosts;
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
+
+      const postsHTML = posts.map(p => `
         <article class="blog-post">
-          <h3>${escapeHtml(p.title)}</h3>
-          <p>${escapeHtml(p.body)}</p>
+          <h3>${escapeHtml(p.title || '')}</h3>
+          <p>${escapeHtml(p.body || '')}</p>
         </article>
       `).join('');
 
@@ -194,6 +205,7 @@
             .blog-toolbar { margin: 12px 0 16px; display: flex; gap: 8px; flex-wrap: wrap; }
             input, textarea { width: 100%; box-sizing: border-box; margin: 6px 0 10px; padding: 10px; border-radius: 8px; border: 1px solid #555; background: #171a22; color: #fff; }
             button { padding: 10px 14px; border-radius: 8px; border: 0; cursor: pointer; background: #3b82f6; color: #fff; }
+            .danger { background: #b91c1c; }
             .blog-list { display: grid; gap: 10px; margin-top: 10px; }
             .blog-post { padding: 12px; border: 1px solid #444; border-radius: 10px; background: #151925; }
             .small-note { font-size: 0.9rem; opacity: 0.85; }
@@ -208,8 +220,8 @@
             </div>
             <p class="small-note">
               ${isEditor
-                ? 'You can add posts in this demo tab.'
-                : 'You can read posts only in this demo tab.'}
+                ? 'You can add posts. Readers on this browser will see them.'
+                : 'Read-only mode. You can view all saved posts.'}
             </p>
 
             ${isEditor ? `
@@ -221,6 +233,7 @@
               <textarea id="newBody" rows="4" placeholder="Write your post..."></textarea>
               <div class="blog-toolbar">
                 <button id="addPostBtn">Add Post</button>
+                <button id="clearPostsBtn" class="danger">Clear All Posts</button>
               </div>
             ` : ''}
 
@@ -231,16 +244,43 @@
 
           <script>
             const isEditor = ${isEditor ? 'true' : 'false'};
-            if (isEditor) {
-              function escapeHtml(str) {
-                return str
-                  .replaceAll('&', '&amp;')
-                  .replaceAll('<', '&lt;')
-                  .replaceAll('>', '&gt;')
-                  .replaceAll('"', '&quot;')
-                  .replaceAll("'", '&#39;');
+            const STORAGE_KEY = 'damon_blog_posts_v1';
+
+            function escapeHtml(str) {
+              return str
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
+            }
+
+            function renderPosts() {
+              let posts = [];
+              try {
+                posts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                if (!Array.isArray(posts)) posts = [];
+              } catch {
+                posts = [];
               }
 
+              const container = document.getElementById('posts');
+              if (!posts.length) {
+                container.innerHTML = '<p class="small-note">No posts yet.</p>';
+                return;
+              }
+
+              container.innerHTML = posts.map(p => (
+                '<article class="blog-post">' +
+                  '<h3>' + escapeHtml(p.title || '') + '</h3>' +
+                  '<p>' + escapeHtml(p.body || '') + '</p>' +
+                '</article>'
+              )).join('');
+            }
+
+            renderPosts();
+
+            if (isEditor) {
               document.getElementById('addPostBtn').addEventListener('click', function () {
                 const titleEl = document.getElementById('newTitle');
                 const bodyEl = document.getElementById('newBody');
@@ -252,14 +292,26 @@
                   return;
                 }
 
-                const posts = document.getElementById('posts');
-                const article = document.createElement('article');
-                article.className = 'blog-post';
-                article.innerHTML = '<h3>' + escapeHtml(title) + '</h3><p>' + escapeHtml(body) + '</p>';
-                posts.prepend(article);
+                let posts = [];
+                try {
+                  posts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                  if (!Array.isArray(posts)) posts = [];
+                } catch {
+                  posts = [];
+                }
+
+                posts.unshift({ title, body });
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
 
                 titleEl.value = '';
                 bodyEl.value = '';
+                renderPosts();
+              });
+
+              document.getElementById('clearPostsBtn').addEventListener('click', function () {
+                if (!confirm('Delete all blog posts?')) return;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+                renderPosts();
               });
             }
           <\/script>
