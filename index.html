@@ -136,7 +136,13 @@
   <script>
     document.addEventListener('keydown', function (event) {
       if (event.key.toLowerCase() === 'x') {
-        window.open('hhhhhhhhhhhhh.html', '_blank');
+        const a = document.createElement('a');
+        a.href = 'hhhhhhhhhhhhh.html';
+        a.target = '_blank';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
       }
     });
   </script>
