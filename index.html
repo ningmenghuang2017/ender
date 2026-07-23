@@ -1,4 +1,4 @@
-<!doctype html
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -7,6 +7,12 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="cyberpunk-theme.css">
   <link rel="stylesheet" href="floating-icons.css">
+  <style>
+    .blog-toolbar { margin: 12px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+    .blog-list { display: grid; gap: 10px; margin-top: 10px; }
+    .blog-post { padding: 12px; border: 1px solid #ccc; border-radius: 10px; background: rgba(255,255,255,0.03); }
+    .small-note { font-size: 0.9rem; opacity: 0.8; }
+  </style>
 </head>
 <body>
   <!-- Header / Navigation -->
@@ -18,7 +24,8 @@
         <a href="#home">Home</a>
         <a href="#about">About</a>
         <a href="#interests">Interests</a>
-        <a href="#projects">Projects</a>
+        <a href="#projects">More Stuff</a>
+        <a href="#blog">Blog</a>
       </nav>
     </div>
   </header>
@@ -37,7 +44,6 @@
           </div>
         </div>
         <div class="hero-image" aria-hidden="true">
-          <!-- Simple colorful graphic made with CSS shapes -->
           <div class="robot"></div>
         </div>
       </div>
@@ -48,7 +54,6 @@
       <div class="container">
         <h2>About Me</h2>
         <p>Hi! My name is <strong>Damon (黄沐晨)</strong>. I am in 3rd grade. I enjoy learning how programs work and trying new ideas with code. I am friendly and curious.</p>
-        <!-- Short facts list -->
         <ul class="facts">
           <li><strong>Grade:</strong> 3rd</li>
           <li><strong>Interests:</strong> Coding</li>
@@ -79,7 +84,7 @@
       </div>
     </section>
 
-    <!-- Projects -->
+    <!-- More Stuff -->
     <section id="projects" class="section projects">
       <div class="container">
         <h2>More Stuff</h2>
@@ -105,6 +110,15 @@
         <p class="small">Want to add more projects? You or your parent can edit the files in this repository anytime.</p>
       </div>
     </section>
+
+    <!-- Blog -->
+    <section id="blog" class="section blog">
+      <div class="container">
+        <h2>Blog</h2>
+        <p>This opens in a new tab. Email check is a demo safety feature.</p>
+        <button id="open-blog" class="btn">Open Blog</button>
+      </div>
+    </section>
   </main>
 
   <!-- Footer -->
@@ -116,7 +130,9 @@
 
   <script src="script.js"></script>
   <script src="floating-icons.js"></script>
+
   <script>
+    // X key shortcut (existing behavior)
     document.addEventListener('keydown', function (event) {
       if (event.key.toLowerCase() === 'x') {
         const a = document.createElement('a');
@@ -127,6 +143,131 @@
         a.click();
         a.remove();
       }
+    });
+
+    // Demo blog in new tab with email prompt
+    document.getElementById('open-blog').addEventListener('click', function () {
+      const blogWindow = window.open('', '_blank');
+      if (!blogWindow) {
+        alert('Popup blocked. Please allow popups for this site.');
+        return;
+      }
+
+      const email = blogWindow.prompt('What is your email? This is a safety feature.') || '';
+      const isEditor = email.trim().toLowerCase() === 'househuntinghh@gmail.com';
+
+      const starterPosts = [
+        { title: 'Welcome to my blog!', body: 'This is my first post. I like coding and building fun things.' },
+        { title: 'Today I learned', body: 'I learned how to make web pages with HTML, CSS, and JavaScript.' }
+      ];
+
+      function escapeHtml(str) {
+        return str
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+      }
+
+      const postsHTML = starterPosts.map(p => `
+        <article class="blog-post">
+          <h3>${escapeHtml(p.title)}</h3>
+          <p>${escapeHtml(p.body)}</p>
+        </article>
+      `).join('');
+
+      blogWindow.document.write(`
+        <!doctype html>
+        <html lang="en">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>Damon's Blog</title>
+          <style>
+            body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; line-height: 1.5; background: #0f1115; color: #e6e6e6; }
+            h1, h2, h3 { margin: 0 0 8px; }
+            .wrap { max-width: 800px; margin: 0 auto; }
+            .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; margin-bottom: 12px; font-size: 12px; }
+            .editor { background: #164e2f; color: #caffde; }
+            .reader { background: #3a3f4b; color: #dfe4ff; }
+            .blog-toolbar { margin: 12px 0 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+            input, textarea { width: 100%; box-sizing: border-box; margin: 6px 0 10px; padding: 10px; border-radius: 8px; border: 1px solid #555; background: #171a22; color: #fff; }
+            button { padding: 10px 14px; border-radius: 8px; border: 0; cursor: pointer; background: #3b82f6; color: #fff; }
+            .blog-list { display: grid; gap: 10px; margin-top: 10px; }
+            .blog-post { padding: 12px; border: 1px solid #444; border-radius: 10px; background: #151925; }
+            .small-note { font-size: 0.9rem; opacity: 0.85; }
+            hr { border: 0; border-top: 1px solid #333; margin: 16px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="wrap">
+            <h1>Damon's Blog</h1>
+            <div class="badge ${isEditor ? 'editor' : 'reader'}">
+              ${isEditor ? 'Editor mode' : 'Read-only mode'}
+            </div>
+            <p class="small-note">
+              ${isEditor
+                ? 'You can add posts in this demo tab.'
+                : 'You can read posts only in this demo tab.'}
+            </p>
+
+            ${isEditor ? `
+              <hr />
+              <h2>Add a post</h2>
+              <label>Title</label>
+              <input id="newTitle" placeholder="Post title" />
+              <label>Body</label>
+              <textarea id="newBody" rows="4" placeholder="Write your post..."></textarea>
+              <div class="blog-toolbar">
+                <button id="addPostBtn">Add Post</button>
+              </div>
+            ` : ''}
+
+            <hr />
+            <h2>Posts</h2>
+            <div id="posts" class="blog-list">${postsHTML}</div>
+          </div>
+
+          <script>
+            const isEditor = ${isEditor ? 'true' : 'false'};
+            if (isEditor) {
+              function escapeHtml(str) {
+                return str
+                  .replaceAll('&', '&amp;')
+                  .replaceAll('<', '&lt;')
+                  .replaceAll('>', '&gt;')
+                  .replaceAll('"', '&quot;')
+                  .replaceAll("'", '&#39;');
+              }
+
+              document.getElementById('addPostBtn').addEventListener('click', function () {
+                const titleEl = document.getElementById('newTitle');
+                const bodyEl = document.getElementById('newBody');
+                const title = (titleEl.value || '').trim();
+                const body = (bodyEl.value || '').trim();
+
+                if (!title || !body) {
+                  alert('Please enter both a title and body.');
+                  return;
+                }
+
+                const posts = document.getElementById('posts');
+                const article = document.createElement('article');
+                article.className = 'blog-post';
+                article.innerHTML = '<h3>' + escapeHtml(title) + '</h3><p>' + escapeHtml(body) + '</p>';
+                posts.prepend(article);
+
+                titleEl.value = '';
+                bodyEl.value = '';
+              });
+            }
+          <\/script>
+        </body>
+        </html>
+      `);
+
+      blogWindow.document.close();
     });
   </script>
 </body>
