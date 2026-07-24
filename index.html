@@ -157,6 +157,11 @@
       const isEditor = email.trim().toLowerCase() === 'househuntinghh@gmail.com';
       const STORAGE_KEY = 'damon_blog_posts_v1';
 
+      // IMPORTANT: use opener storage so save/load always persists in your main site
+      const storage = (blogWindow.opener && blogWindow.opener.localStorage)
+        ? blogWindow.opener.localStorage
+        : localStorage;
+
       const defaultPosts = [
         { title: 'Welcome to my blog!', body: 'This is my first post. I like coding and building fun things.' },
         { title: 'Today I learned', body: 'I learned how to make web pages with HTML, CSS, and JavaScript.' }
@@ -173,13 +178,13 @@
 
       let posts = [];
       try {
-        const saved = localStorage.getItem(STORAGE_KEY);
+        const saved = storage.getItem(STORAGE_KEY);
         posts = saved ? JSON.parse(saved) : defaultPosts;
         if (!Array.isArray(posts)) posts = defaultPosts;
       } catch {
         posts = defaultPosts;
       }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
+      storage.setItem(STORAGE_KEY, JSON.stringify(posts));
 
       const postsHTML = posts.map(p => `
         <article class="blog-post">
@@ -245,6 +250,9 @@
           <script>
             const isEditor = ${isEditor ? 'true' : 'false'};
             const STORAGE_KEY = 'damon_blog_posts_v1';
+            const storage = (window.opener && window.opener.localStorage)
+              ? window.opener.localStorage
+              : localStorage;
 
             function escapeHtml(str) {
               return str
@@ -258,7 +266,7 @@
             function renderPosts() {
               let posts = [];
               try {
-                posts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                posts = JSON.parse(storage.getItem(STORAGE_KEY) || '[]');
                 if (!Array.isArray(posts)) posts = [];
               } catch {
                 posts = [];
@@ -294,14 +302,14 @@
 
                 let posts = [];
                 try {
-                  posts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                  posts = JSON.parse(storage.getItem(STORAGE_KEY) || '[]');
                   if (!Array.isArray(posts)) posts = [];
                 } catch {
                   posts = [];
                 }
 
                 posts.unshift({ title, body });
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
+                storage.setItem(STORAGE_KEY, JSON.stringify(posts));
 
                 titleEl.value = '';
                 bodyEl.value = '';
@@ -310,7 +318,7 @@
 
               document.getElementById('clearPostsBtn').addEventListener('click', function () {
                 if (!confirm('Delete all blog posts?')) return;
-                localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+                storage.setItem(STORAGE_KEY, JSON.stringify([]));
                 renderPosts();
               });
             }
