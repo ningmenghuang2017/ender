@@ -158,7 +158,7 @@ body{
 
 /* Facts list */
 .facts{list-style:none; padding:0; display:flex; gap:10px; flex-wrap:wrap}
-.facts li{background:var(--card); padding:10px 12px; border-radius:10px; box-shadow:0 4px 10px rgba(20,30,40,0.04); font-weight:600}
+.facts li{background:blue; padding:10px 12px; border-radius:10px; box-shadow:0 4px 10px rgba(20,30,40,0.04); font-weight:600}
 
 /* Cards for interests */
 .cards{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:12px}
