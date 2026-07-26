@@ -1,0 +1,486 @@
+<script>
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const hud = document.querySelector('.hud');
+
+  if (hud) {
+    hud.innerHTML = `
+      <div>Score: <span id="score">0</span></div>
+      <div>Best: <span id="best">0</span></div>
+      <div>Mode: <span id="mode">Portal Flappy</span></div>
+      <div>Coins: <span id="coins">0</span></div>
+    `;
+  }
+
+  const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
+  const modeEl = document.getElementById('mode');
+  const coinsEl = document.getElementById('coins');
+
+  const W = canvas.width;
+  const H = canvas.height;
+
+  const GROUND_H = 92;
+  const PIPE_W = 78;
+  const PIPE_GAP = 184;
+  const PIPE_SPEED = 2.8;
+  const BASE_PIPE_TIMER = 95;
+
+  const FLAP_G = 0.4;
+  const FLAP_V = -7.2;
+
+  const BOSS_TARGET_SCORE = 20;
+  const BOSS_WARNING_FRAMES = 90;
+
+  let state = 'ready';
+  let score = 0;
+  let best = Number(localStorage.getItem('portal-remix-best') || 0);
+  let coinCount = 0;
+
+  let pipeTimer = 0;
+  let pipes = [];
+
+  let nextBossScore = 100;
+  let bossPending = false;
+  let bossActive = false;
+  let bossWarningFrames = 0;
+  let bossStartScore = 0;
+  let bossFireTimer = 0;
+  let fireRows = [];
+
+  const player = {
+    x: 140,
+    y: H * 0.42,
+    vy: 0,
+    r: 18,
+    rotation: 0
+  };
+
+  function updateHud() {
+    if (scoreEl) scoreEl.textContent = String(score);
+    if (bestEl) bestEl.textContent = String(best);
+    if (coinsEl) coinsEl.textContent = String(coinCount);
+
+    if (modeEl) {
+      if (bossPending) {
+        modeEl.textContent = 'BOSS INCOMING!';
+      } else if (bossActive) {
+        modeEl.textContent = `Boss ${Math.min(BOSS_TARGET_SCORE, score - bossStartScore)}/${BOSS_TARGET_SCORE}`;
+      } else {
+        modeEl.textContent = 'Portal Flappy';
+      }
+    }
+  }
+
+  function resetRun() {
+    state = 'ready';
+    score = 0;
+    coinCount = 0;
+    pipeTimer = 0;
+    pipes = [];
+
+    nextBossScore = 100;
+    bossPending = false;
+    bossActive = false;
+    bossWarningFrames = 0;
+    bossStartScore = 0;
+    bossFireTimer = 0;
+    fireRows = [];
+
+    player.y = H * 0.42;
+    player.vy = 0;
+    player.rotation = 0;
+    updateHud();
+  }
+
+  function startGame() {
+    if (state === 'playing') return;
+    if (state === 'gameover') resetRun();
+    state = 'playing';
+  }
+
+  function endGame() {
+    state = 'gameover';
+    best = Math.max(best, score);
+    localStorage.setItem('portal-remix-best', String(best));
+    updateHud();
+  }
+
+  function tapAction() {
+    if (state === 'ready') {
+      startGame();
+      player.vy = FLAP_V;
+      return;
+    }
+
+    if (state === 'gameover') {
+      resetRun();
+      return;
+    }
+
+    if (state === 'playing') {
+      player.vy = FLAP_V;
+    }
+  }
+
+  function addScore(points) {
+    score += points;
+    best = Math.max(best, score);
+    localStorage.setItem('portal-remix-best', String(best));
+
+    if (state === 'playing' && !bossActive && !bossPending && score >= nextBossScore) {
+      beginBossWarning();
+    }
+
+    updateHud();
+  }
+
+  function playBossCue() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const ac = new AC();
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, ac.currentTime);
+      osc.frequency.linearRampToValueAtTime(110, ac.currentTime + 0.22);
+
+      gain.gain.setValueAtTime(0.0001, ac.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.12, ac.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.26);
+
+      osc.connect(gain);
+      gain.connect(ac.destination);
+      osc.start();
+      osc.stop(ac.currentTime + 0.27);
+    } catch (_) {}
+  }
+
+  function beginBossWarning() {
+    bossPending = true;
+    bossActive = false;
+    bossWarningFrames = BOSS_WARNING_FRAMES;
+    bossStartScore = score;
+    bossFireTimer = 36;
+    fireRows = [];
+    nextBossScore += 100;
+
+    pipes = [];
+    pipeTimer = 0;
+
+    playBossCue();
+    updateHud();
+  }
+
+  function startBossFight() {
+    bossPending = false;
+    bossActive = true;
+    updateHud();
+  }
+
+  function endBossFight() {
+    bossPending = false;
+    bossActive = false;
+    fireRows = [];
+    updateHud();
+  }
+
+  function spawnPipe() {
+    const safeTop = 70;
+    const safeBottom = H - GROUND_H - 70;
+    const gapY = safeTop + Math.random() * (safeBottom - safeTop - PIPE_GAP);
+
+    pipes.push({
+      x: W + 20,
+      topH: gapY,
+      bottomY: gapY + PIPE_GAP,
+      passed: false
+    });
+  }
+
+  function spawnFireRow() {
+    const y = 100 + Math.random() * (H - GROUND_H - 200);
+    fireRows.push({
+      x: W + 28,
+      y,
+      w: 220,
+      h: 24,
+      speed: 6.1 + Math.random() * 1.1,
+      rewarded: false
+    });
+  }
+
+  function clamp(v, min, max) {
+    return Math.max(min, Math.min(max, v));
+  }
+
+  function circleRectHit(cx, cy, cr, rx, ry, rw, rh) {
+    const nearestX = clamp(cx, rx, rx + rw);
+    const nearestY = clamp(cy, ry, ry + rh);
+    const dx = cx - nearestX;
+    const dy = cy - nearestY;
+    return dx * dx + dy * dy <= cr * cr;
+  }
+
+  function updatePortalFlappy() {
+    if (state !== 'playing') return;
+
+    if (!bossActive && !bossPending) {
+      pipeTimer += 1;
+      if (pipeTimer >= BASE_PIPE_TIMER) {
+        spawnPipe();
+        pipeTimer = 0;
+      }
+    }
+
+    player.vy += FLAP_G;
+    player.y += player.vy;
+    player.rotation = Math.max(-0.9, Math.min(1.1, player.vy / 11));
+
+    if (bossPending) {
+      bossWarningFrames -= 1;
+      if (bossWarningFrames <= 0) {
+        startBossFight();
+      }
+    }
+
+    if (bossActive) {
+      bossFireTimer -= 1;
+      if (bossFireTimer <= 0) {
+        spawnFireRow();
+        bossFireTimer = 42;
+      }
+
+      for (let i = fireRows.length - 1; i >= 0; i -= 1) {
+        const f = fireRows[i];
+        f.x -= f.speed;
+
+        if (circleRectHit(player.x, player.y, player.r, f.x, f.y - f.h / 2, f.w, f.h)) {
+          endGame();
+          return;
+        }
+
+        if (!f.rewarded && f.x + f.w < player.x - player.r) {
+          f.rewarded = true;
+          addScore(1);
+        }
+
+        if (f.x + f.w < -40) {
+          fireRows.splice(i, 1);
+        }
+      }
+
+      if (score - bossStartScore >= BOSS_TARGET_SCORE) {
+        endBossFight();
+      }
+    }
+
+    for (let i = pipes.length - 1; i >= 0; i -= 1) {
+      const p = pipes[i];
+      p.x -= PIPE_SPEED;
+
+      const topHit = circleRectHit(player.x, player.y, player.r, p.x, 0, PIPE_W, p.topH);
+      const bottomHit = circleRectHit(player.x, player.y, player.r, p.x, p.bottomY, PIPE_W, H - GROUND_H - p.bottomY);
+
+      if (topHit || bottomHit) {
+        endGame();
+        return;
+      }
+
+      if (!p.passed && p.x + PIPE_W < player.x) {
+        p.passed = true;
+        addScore(1);
+      }
+
+      if (p.x + PIPE_W < -30) {
+        pipes.splice(i, 1);
+      }
+    }
+
+    if (player.y - player.r <= 0 || player.y + player.r >= H - GROUND_H) {
+      endGame();
+    }
+  }
+
+  function drawSky() {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#87ceeb');
+    g.addColorStop(1, '#dff6ff');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawGround() {
+    ctx.fillStyle = '#7c5a31';
+    ctx.fillRect(0, H - GROUND_H, W, GROUND_H);
+    ctx.fillStyle = '#6ab04c';
+    ctx.fillRect(0, H - GROUND_H, W, 14);
+  }
+
+  function drawPipes() {
+    ctx.fillStyle = '#2e8b57';
+    ctx.strokeStyle = '#1f5f3e';
+    ctx.lineWidth = 3;
+
+    pipes.forEach((p) => {
+      ctx.fillRect(p.x, 0, PIPE_W, p.topH);
+      ctx.strokeRect(p.x, 0, PIPE_W, p.topH);
+
+      const bottomH = H - GROUND_H - p.bottomY;
+      ctx.fillRect(p.x, p.bottomY, PIPE_W, bottomH);
+      ctx.strokeRect(p.x, p.bottomY, PIPE_W, bottomH);
+    });
+  }
+
+  function drawBoss() {
+    if (!bossPending && !bossActive && fireRows.length === 0) return;
+
+    const bx = W - 84;
+    const by = 112;
+
+    ctx.save();
+    ctx.fillStyle = '#7f1d1d';
+    ctx.beginPath();
+    ctx.arc(bx, by, 40, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#fecaca';
+    ctx.beginPath();
+    ctx.arc(bx - 14, by - 8, 6, 0, Math.PI * 2);
+    ctx.arc(bx + 14, by - 8, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(bx - 14, by - 8, 2.5, 0, Math.PI * 2);
+    ctx.arc(bx + 14, by - 8, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    if (bossPending) {
+      const a = 0.5 + Math.sin(Date.now() / 80) * 0.25;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0.25, Math.min(0.95, a));
+      ctx.fillStyle = '#b91c1c';
+      ctx.fillRect(70, 90, W - 140, 44);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 20px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('BOSS INCOMING!', W / 2, 118);
+      ctx.restore();
+    }
+
+    fireRows.forEach((f) => {
+      ctx.save();
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(f.x, f.y - f.h / 2, f.w, f.h);
+
+      ctx.fillStyle = '#f97316';
+      for (let i = 0; i < f.w; i += 20) {
+        ctx.beginPath();
+        ctx.arc(f.x + i + 10, f.y, 7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#fde047';
+      for (let i = 0; i < f.w; i += 28) {
+        ctx.beginPath();
+        ctx.arc(f.x + i + 8, f.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    });
+  }
+
+  function drawBird() {
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.rotate(player.rotation);
+
+    ctx.fillStyle = '#f1c40f';
+    ctx.beginPath();
+    ctx.arc(0, 0, player.r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#e67e22';
+    ctx.beginPath();
+    ctx.moveTo(player.r - 2, 0);
+    ctx.lineTo(player.r + 12, -4);
+    ctx.lineTo(player.r + 12, 4);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(5, -6, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(7, -6, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawOverlay() {
+    ctx.fillStyle = '#1f2937';
+    ctx.font = 'bold 28px Arial';
+    ctx.textAlign = 'center';
+
+    if (state === 'ready') {
+      ctx.fillText('Click or Press Space', W / 2, H / 2 - 10);
+      ctx.font = '18px Arial';
+      ctx.fillText('Boss every 100 score', W / 2, H / 2 + 24);
+    }
+
+    if (state === 'gameover') {
+      ctx.fillText('Game Over', W / 2, H / 2 - 10);
+      ctx.font = '18px Arial';
+      ctx.fillText('Click or Press Space to restart', W / 2, H / 2 + 24);
+    }
+  }
+
+  function drawScoreOnCanvas() {
+    ctx.fillStyle = '#111827';
+    ctx.font = 'bold 26px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(`Score: ${score}`, 18, 38);
+
+    if (bossActive) {
+      ctx.textAlign = 'right';
+      ctx.fillText(`Boss: ${Math.min(BOSS_TARGET_SCORE, score - bossStartScore)}/${BOSS_TARGET_SCORE}`, W - 18, 38);
+    }
+  }
+
+  function draw() {
+    drawSky();
+    drawPipes();
+    drawBoss();
+    drawBird();
+    drawGround();
+    drawScoreOnCanvas();
+    drawOverlay();
+  }
+
+  function loop() {
+    updatePortalFlappy();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      tapAction();
+    }
+  });
+
+  canvas.addEventListener('pointerdown', tapAction);
+
+  resetRun();
+  loop();
+</script>
