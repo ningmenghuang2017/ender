@@ -204,8 +204,8 @@ async function handleCreateRoom(event) {
 
   const roomName = roomNameInput.value.trim();
 
-  if (roomName.length < 3 || roomName.length > 40) {
-    showStatus(chatError, "Room names must be between 3 and 40 characters.", "status-error");
+  if (roomName.length < 3 || roomName.length > 100) {
+    showStatus(chatError, "Room names must be between 3 and 100 characters.", "status-error");
     return;
   }
 
