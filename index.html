@@ -26,6 +26,7 @@
         <a href="#interests">Interests</a>
         <a href="#projects">More Stuff</a>
         <a href="#blog">Blog</a>
+        <a href="#chat">Chat</a>
       </nav>
     </div>
   </header>
@@ -109,6 +110,81 @@
         <button id="open-blog" class="btn">Open Blog</button>
       </div>
     </section>
+
+    <section id="chat" class="section chat">
+      <div class="container">
+        <h2>Chat</h2>
+        <p class="small">Create an account, sign in, and chat with other people in realtime rooms.</p>
+        <p id="firebase-setup-message" class="status-banner" hidden></p>
+
+        <div class="chat-grid">
+          <article class="chat-card">
+            <h3>Account</h3>
+            <p id="auth-status" class="small">Chat is loading...</p>
+            <p id="auth-error" class="status-message status-error" role="alert" hidden></p>
+
+            <form id="sign-up-form" class="stack-form">
+              <h4>Create account</h4>
+              <label for="sign-up-email">Email</label>
+              <input id="sign-up-email" name="email" type="email" autocomplete="email" placeholder="name@example.com" required>
+              <label for="sign-up-password">Password</label>
+              <input id="sign-up-password" name="password" type="password" autocomplete="new-password" minlength="6" placeholder="At least 6 characters" required>
+              <button type="submit" class="btn">Sign Up</button>
+            </form>
+
+            <form id="sign-in-form" class="stack-form">
+              <h4>Sign in</h4>
+              <label for="sign-in-email">Email</label>
+              <input id="sign-in-email" name="email" type="email" autocomplete="email" placeholder="name@example.com" required>
+              <label for="sign-in-password">Password</label>
+              <input id="sign-in-password" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="Your password" required>
+              <button type="submit" class="btn btn-ghost">Sign In</button>
+            </form>
+
+            <button id="sign-out-button" class="btn btn-ghost chat-action-button" type="button" disabled>Sign Out</button>
+          </article>
+
+          <article class="chat-card">
+            <div class="chat-card-header">
+              <h3>Rooms</h3>
+              <p id="room-status" class="small">Sign in to load rooms.</p>
+            </div>
+            <p id="chat-error" class="status-message status-error" role="alert" hidden></p>
+
+            <form id="create-room-form" class="stack-form">
+              <label for="room-name">Create a room</label>
+              <div class="inline-form">
+                <input id="room-name" name="roomName" type="text" minlength="3" maxlength="40" placeholder="Room name" required>
+                <button id="create-room-button" type="submit" class="btn" disabled>Create Room</button>
+              </div>
+            </form>
+
+            <div id="room-list" class="room-list" aria-live="polite">
+              <p class="small">No rooms yet.</p>
+            </div>
+          </article>
+
+          <article class="chat-card chat-card-wide">
+            <div class="chat-card-header">
+              <h3>Realtime chat</h3>
+              <p id="selected-room-label" class="small">Select a room to begin chatting.</p>
+            </div>
+
+            <div id="message-list" class="message-list" aria-live="polite">
+              <p class="small">Sign in and choose a room to see messages.</p>
+            </div>
+
+            <form id="message-form" class="stack-form message-form">
+              <label for="message-input">Message</label>
+              <div class="inline-form">
+                <input id="message-input" name="message" type="text" maxlength="280" placeholder="Type a message" required>
+                <button id="send-message-button" type="submit" class="btn" disabled>Send</button>
+              </div>
+            </form>
+          </article>
+        </div>
+      </div>
+    </section>
   </main>
 
   <!-- Footer -->
@@ -120,6 +196,7 @@
 
   <script src="script.js"></script>
   <script src="floating-icons.js"></script>
+  <script type="module" src="js/chat-app.js"></script>
 
   <script>
     // X key shortcut (existing behavior)
