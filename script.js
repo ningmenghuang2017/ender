@@ -1,5 +1,7 @@
 // Small JavaScript to make the mobile nav work and add simple interactions.
 // Comments explain each part so you can learn what it does.
+import { firebaseConfig } from "./firebase-config.js";
+const app = initializeApp(firebaseConfig);
 
 /* Toggle mobile navigation: when the button is clicked, show or hide the nav links */
 document.addEventListener('DOMContentLoaded', function () {
