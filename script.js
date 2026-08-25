@@ -61,8 +61,8 @@ document.addEventListener('DOMContentLoaded', function () {
     hiddenBtn.addEventListener('click', function () {
       var passcode = prompt('Enter passcode to access hidden content:') || '';
       if (passcode === 'crystalclear') {
-        // Secret page (create this file in your repo)
-        window.location.href = 'secret.html';
+        // Use absolute path for GitHub Pages reliability
+        window.location.href = '/ender/secret.html';
       } else {
         alert('Wrong passcode. Access denied.');
         // Safe "kick-out" behavior: move user to a blocked page
