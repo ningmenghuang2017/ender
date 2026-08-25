@@ -53,4 +53,21 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
   });
+
+  /* Hidden content access gate */
+  var hiddenBtn = document.getElementById('open-hidden-content');
+  if (hiddenBtn) {
+    hiddenBtn.addEventListener('click', function () {
+      var passcode = prompt('Enter passcode to access hidden content:') || '';
+      if (passcode === 'crystalclear') {
+        // Secret page (create this file in your repo)
+        window.location.href = 'secret.html';
+      } else {
+        alert('Wrong passcode. Access denied.');
+        // Safe "kick-out" behavior: move user to a blocked page
+        // They must re-enter your site URL to come back.
+        window.location.replace('about:blank');
+      }
+    });
+  }
 });
