@@ -116,7 +116,7 @@
       <div class="container">
         <h2>Hidden Content</h2>
         <p>Enter the passcode to open the secret page.</p>
-        <button id="open-hidden-content" class="btn">Open Hidden Content</button>
+        <button id="open-hidden-content" class="btn" type="button">Open Hidden Content</button>
       </div>
     </section>
   </main>
@@ -329,6 +329,22 @@
 
       blogWindow.document.close();
     });
+
+    // Fallback hidden content gate (works even if module script fails)
+    (function () {
+      var hiddenBtn = document.getElementById('open-hidden-content');
+      if (!hiddenBtn) return;
+
+      hiddenBtn.addEventListener('click', function () {
+        var passcode = prompt('Enter passcode to access hidden content:') || '';
+        if (passcode === 'crystalclear') {
+          window.location.href = 'secret.html';
+        } else {
+          alert('Wrong passcode. Access denied.');
+          window.location.replace('about:blank');
+        }
+      });
+    })();
   </script>
 </body>
 </html>
