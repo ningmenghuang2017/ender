@@ -1,5 +1,6 @@
 // Small JavaScript to make the mobile nav work and add simple interactions.
 // Comments explain each part so you can learn what it does.
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { firebaseConfig } from "./firebase-config.js";
 const app = initializeApp(firebaseConfig);
 
