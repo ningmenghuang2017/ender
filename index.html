@@ -1,350 +1,353 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Damon (黄沐晨) — Personal Site</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="cyberpunk-theme.css">
-  <link rel="stylesheet" href="floating-icons.css">
-  <style>
-    .blog-toolbar { margin: 12px 0; display: flex; gap: 8px; flex-wrap: wrap; }
-    .blog-list { display: grid; gap: 10px; margin-top: 10px; }
-    .blog-post { padding: 12px; border: 1px solid #ccc; border-radius: 10px; background: rgba(255,255,255,0.03); }
-    .small-note { font-size: 0.9rem; opacity: 0.8; }
-  </style>
-</head>
-<body>
-  <!-- Header / Navigation -->
-  <header class="site-header">
-    <div class="container header-inner">
-      <div class="brand">Damon (黄沐晨)</div>
-      <button id="nav-toggle" class="nav-toggle" aria-label="Open navigation">☰</button>
-      <nav id="nav" class="nav">
-        <a href="#home">Home</a>
-        <a href="#about">About</a>
-        <a href="#interests">Interests</a>
-        <a href="#projects">More Stuff</a>
-        <a href="#blog">Blog</a>
-        <a href="#hidden-content">Hidden Content</a>
-      </nav>
-    </div>
-  </header>
-
-  <!-- Hero / Home -->
-  <main>
-    <section id="home" class="hero">
-      <div class="container hero-inner">
-        <div class="intro">
-          <h1>Hi, I'm Damon (黄沐晨)!</h1>
-          <p class="lead">I am in 3rd grade. I love coding and making fun things with computers.</p>
-          <p><strong>Next I want to learn:</strong> a more complicated programming language — C#</p>
-          <div class="hero-actions">
-            <a href="#projects" class="btn">See my projects</a>
-            <a href="#about" class="btn btn-ghost">About me</a>
-          </div>
-        </div>
-        <div class="hero-image" aria-hidden="true">
-          <div class="robot"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- About Me -->
-    <section id="about" class="section about">
-      <div class="container">
-        <h2>About Me</h2>
-        <p>Hi! My name is <strong>Damon (黄沐晨)</strong>. I am in 3rd grade. I enjoy learning how programs work and trying new ideas with code. I am friendly and curious.</p>
-        <ul class="facts">
-          <li><strong>Grade:</strong> 3rd</li>
-          <li><strong>Interests:</strong> Coding</li>
-          <li><strong>Learning next:</strong> C#</li>
-        </ul>
-      </div>
-    </section>
-
-    <!-- Interests -->
-    <section id="interests" class="section interests">
-      <div class="container">
-        <h2>Interests</h2>
-        <p>I like coding. I enjoy making small games and trying to solve problems with code. I also like to sketch simple characters for my projects.</p>
-        <div class="cards">
-          <article class="card">
-            <h3>Coding</h3>
-            <p>Learning how to make things move on the screen and follow rules.</p>
-          </article>
-          <article class="card">
-            <h3>Games</h3>
-            <p>Playing games helps me think of ideas for my own projects.</p>
-          </article>
-          <article class="card">
-            <h3>Learning C#</h3>
-            <p>I want to learn C# next so I can make bigger projects and learn about real programming languages.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- More Stuff -->
-    <section id="projects" class="section projects">
-      <div class="container">
-        <h2>More Stuff</h2>
-        <p>Play these projects:</p>
-
-        <div class="project-grid">
-          <article class="project">
-            <h3><a href="flappy-bird.html" target="_blank">Flappy Bird</a></h3>
-            <p>A sunny flappy bird game where you avoid pipes and try to get a high score.</p>
-          </article>
-        </div>
-
-        <p class="small">Want to add more projects? You or your parent can edit the files in this repository anytime.</p>
-      </div>
-    </section>
-
-    <!-- Blog -->
-    <section id="blog" class="section blog">
-      <div class="container">
-        <h2>Blog</h2>
-        <p>This opens in a new tab. Email check is a demo safety feature.</p>
-        <button id="open-blog" class="btn">Open Blog</button>
-      </div>
-    </section>
-
-    <!-- Hidden Content -->
-    <section id="hidden-content" class="section hidden-content">
-      <div class="container">
-        <h2>Hidden Content</h2>
-        <p>Enter the passcode to open the secret page.</p>
-        <button id="open-hidden-content" class="btn" type="button">Open Hidden Content</button>
-      </div>
-    </section>
-  </main>
-
-  <!-- Footer -->
-  <footer class="site-footer">
-    <div class="container footer-inner">
-      <p>Made by Damon (黄沐晨) — 2026. Built with HTML, CSS, and JavaScript.</p>
-    </div>
-  </footer>
-
-  <script type="module" src="script.js"></script>
-  <script src="floating-icons.js"></script>
-
-  <script>
-    // X key shortcut (existing behavior)
-    document.addEventListener('keydown', function (event) {
-      if (event.key.toLowerCase() === 'x') {
-        const a = document.createElement('a');
-        a.href = 'hhhhhhhhhhhhh.html';
-        a.target = '_blank';
-        a.rel = 'noopener';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }
-    });
-
-    // Blog in new tab with localStorage persistence
-    document.getElementById('open-blog').addEventListener('click', function () {
-      const blogWindow = window.open('', '_blank');
-      if (!blogWindow) {
-        alert('Popup blocked. Please allow popups for this site.');
-        return;
-      }
-
-      const email = blogWindow.prompt('What is your email? This is a safety feature.') || '';
-      const isEditor = email.trim().toLowerCase() === 'househuntinghh@gmail.com';
-      const STORAGE_KEY = 'damon_blog_posts_v1';
-
-      // IMPORTANT: use opener storage so save/load always persists in your main site
-      const storage = (blogWindow.opener && blogWindow.opener.localStorage)
-        ? blogWindow.opener.localStorage
-        : localStorage;
-
-      const defaultPosts = [
-        { title: 'Welcome to my blog!', body: 'This is my first post. I like coding and building fun things.' },
-        { title: 'Today I learned', body: 'I learned how to make web pages with HTML, CSS, and JavaScript.' }
-      ];
-
-      function escapeHtml(str) {
-        return str
-          .replaceAll('&', '&amp;')
-          .replaceAll('<', '&lt;')
-          .replaceAll('>', '&gt;')
-          .replaceAll('"', '&quot;')
-          .replaceAll("'", '&#39;');
-      }
-
-      let posts = [];
-      try {
-        const saved = storage.getItem(STORAGE_KEY);
-        posts = saved ? JSON.parse(saved) : defaultPosts;
-        if (!Array.isArray(posts)) posts = defaultPosts;
-      } catch {
-        posts = defaultPosts;
-      }
-      storage.setItem(STORAGE_KEY, JSON.stringify(posts));
-
-      const postsHTML = posts.map(p => `
-        <article class="blog-post">
-          <h3>${escapeHtml(p.title || '')}</h3>
-          <p>${escapeHtml(p.body || '')}</p>
-        </article>
-      `).join('');
-
-      blogWindow.document.write(`
-        <!doctype html>
-        <html lang="en">
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width,initial-scale=1">
-          <title>Damon's Blog</title>
-          <style>
-            body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; line-height: 1.5; background: #0f1115; color: #e6e6e6; }
-            h1, h2, h3 { margin: 0 0 8px; }
-            .wrap { max-width: 800px; margin: 0 auto; }
-            .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; margin-bottom: 12px; font-size: 12px; }
-            .editor { background: #164e2f; color: #caffde; }
-            .reader { background: #3a3f4b; color: #dfe4ff; }
-            .blog-toolbar { margin: 12px 0 16px; display: flex; gap: 8px; flex-wrap: wrap; }
-            input, textarea { width: 100%; box-sizing: border-box; margin: 6px 0 10px; padding: 10px; border-radius: 8px; border: 1px solid #555; background: #171a22; color: #fff; }
-            button { padding: 10px 14px; border-radius: 8px; border: 0; cursor: pointer; background: #3b82f6; color: #fff; }
-            .danger { background: #b91c1c; }
-            .blog-list { display: grid; gap: 10px; margin-top: 10px; }
-            .blog-post { padding: 12px; border: 1px solid #444; border-radius: 10px; background: #151925; }
-            .small-note { font-size: 0.9rem; opacity: 0.85; }
-            hr { border: 0; border-top: 1px solid #333; margin: 16px 0; }
-          </style>
-        </head>
-        <body>
-          <div class="wrap">
-            <h1>Damon's Blog</h1>
-            <div class="badge ${isEditor ? 'editor' : 'reader'}">
-              ${isEditor ? 'Editor mode' : 'Read-only mode'}
-            </div>
-            <p class="small-note">
-              ${isEditor
-                ? 'You can add posts. Readers on this browser will see them.'
-                : 'Read-only mode. You can view all saved posts.'}
-            </p>
-
-            ${isEditor ? `
-              <hr />
-              <h2>Add a post</h2>
-              <label>Title</label>
-              <input id="newTitle" placeholder="Post title" />
-              <label>Body</label>
-              <textarea id="newBody" rows="4" placeholder="Write your post..."></textarea>
-              <div class="blog-toolbar">
-                <button id="addPostBtn">Add Post</button>
-                <button id="clearPostsBtn" class="danger">Clear All Posts</button>
-              </div>
-            ` : ''}
-
-            <hr />
-            <h2>Posts</h2>
-            <div id="posts" class="blog-list">${postsHTML}</div>
-          </div>
-
-          <script>
-            const isEditor = ${isEditor ? 'true' : 'false'};
-            const STORAGE_KEY = 'damon_blog_posts_v1';
-            const storage = (window.opener && window.opener.localStorage)
-              ? window.opener.localStorage
-              : localStorage;
-
-            function escapeHtml(str) {
-              return str
-                .replaceAll('&', '&amp;')
-                .replaceAll('<', '&lt;')
-                .replaceAll('>', '&gt;')
-                .replaceAll('"', '&quot;')
-                .replaceAll("'", '&#39;');
-            }
-
-            function renderPosts() {
-              let posts = [];
-              try {
-                posts = JSON.parse(storage.getItem(STORAGE_KEY) || '[]');
-                if (!Array.isArray(posts)) posts = [];
-              } catch {
-                posts = [];
-              }
-
-              const container = document.getElementById('posts');
-              if (!posts.length) {
-                container.innerHTML = '<p class="small-note">No posts yet.</p>';
-                return;
-              }
-
-              container.innerHTML = posts.map(p => (
-                '<article class="blog-post">' +
-                  '<h3>' + escapeHtml(p.title || '') + '</h3>' +
-                  '<p>' + escapeHtml(p.body || '') + '</p>' +
-                '</article>'
-              )).join('');
-            }
-
-            renderPosts();
-
-            if (isEditor) {
-              document.getElementById('addPostBtn').addEventListener('click', function () {
-                const titleEl = document.getElementById('newTitle');
-                const bodyEl = document.getElementById('newBody');
-                const title = (titleEl.value || '').trim();
-                const body = (bodyEl.value || '').trim();
-
-                if (!title || !body) {
-                  alert('Please enter both a title and body.');
-                  return;
-                }
-
-                let posts = [];
-                try {
-                  posts = JSON.parse(storage.getItem(STORAGE_KEY) || '[]');
-                  if (!Array.isArray(posts)) posts = [];
-                } catch {
-                  posts = [];
-                }
-
-                posts.unshift({ title, body });
-                storage.setItem(STORAGE_KEY, JSON.stringify(posts));
-
-                titleEl.value = '';
-                bodyEl.value = '';
-                renderPosts();
-              });
-
-              document.getElementById('clearPostsBtn').addEventListener('click', function () {
-                if (!confirm('Delete all blog posts?')) return;
-                storage.setItem(STORAGE_KEY, JSON.stringify([]));
-                renderPosts();
-              });
-            }
-          <\/script>
-        </body>
-        </html>
-      `);
-
-      blogWindow.document.close();
-    });
-
-    // Fallback hidden content gate (works even if module script fails)
-    (function () {
-      var hiddenBtn = document.getElementById('open-hidden-content');
-      if (!hiddenBtn) return;
-
-      hiddenBtn.addEventListener('click', function () {
-        var passcode = prompt('Enter passcode to access hidden content:') || '';
-        if (passcode === 'crystalclear') {
-          window.location.href = '/ender/secret.html';
-        } else {
-          alert('Wrong passcode. Access denied.');
-          window.location.replace('about:blank');
-        }
-      });
-    })();
-  </script>
-</body>
+```html
+<!doctype html> 
+<html lang="en"> 
+<head> 
+  <meta charset="utf-8"> 
+  <meta name="viewport" content="width=device-width,initial-scale=1"> 
+  <title>Damon (黄沐晨) — Personal Site</title> 
+  <link rel="stylesheet" href="style.css"> 
+  <link rel="stylesheet" href="cyberpunk-theme.css"> 
+  <link rel="stylesheet" href="floating-icons.css"> 
+  <style> 
+    .blog-toolbar { margin: 12px 0; display: flex; gap: 8px; flex-wrap: wrap; } 
+    .blog-list { display: grid; gap: 10px; margin-top: 10px; } 
+    .blog-post { padding: 12px; border: 1px solid #ccc; border-radius: 10px; background: rgba(255,255,255,0.03); } 
+    .small-note { font-size: 0.9rem; opacity: 0.8; } 
+  </style> 
+</head> 
+<body> 
+  <!-- Header / Navigation --> 
+  <header class="site-header"> 
+    <div class="container header-inner"> 
+      <div class="brand">Damon (黄沐晨)</div> 
+      <button id="nav-toggle" class="nav-toggle" aria-label="Open navigation">☰</button> 
+      <nav id="nav" class="nav"> 
+        <a href="#home">Home</a> 
+        <a href="#about">About</a> 
+        <a href="#interests">Interests</a> 
+        <a href="#projects">More Stuff</a> 
+        <a href="#blog">Blog</a> 
+        <a href="#hidden-content">Hidden Content</a> 
+      </nav> 
+    </div> 
+  </header> 
+ 
+  <!-- Hero / Home --> 
+  <main> 
+    <section id="home" class="hero"> 
+      <div class="container hero-inner"> 
+        <div class="intro"> 
+          <h1>Hi, I'm Damon (黄沐晨)!</h1> 
+          <p class="lead">I am in 3rd grade. I love coding and making fun things with computers.</p> 
+          <p><strong>Next I want to learn:</strong> a more complicated programming language — C#</p> 
+          <div class="hero-actions"> 
+            <a href="#projects" class="btn">See my projects</a> 
+            <a href="#about" class="btn btn-ghost">About me</a> 
+          </div> 
+        </div> 
+        <div class="hero-image" aria-hidden="true"> 
+          <div class="robot"></div> 
+        </div> 
+      </div> 
+    </section> 
+ 
+    <!-- About Me --> 
+    <section id="about" class="section about"> 
+      <div class="container"> 
+        <h2>About Me</h2> 
+        <p>Hi! My name is <strong>Damon (黄沐晨)</strong>. I am in 3rd grade. I enjoy learning how programs work and trying new ideas with code. I am friendly and curious.</p> 
+        <ul class="facts"> 
+          <li><strong>Grade:</strong> 3rd</li> 
+          <li><strong>Interests:</strong> Coding</li> 
+          <li><strong>Learning next:</strong> C#</li> 
+        </ul> 
+      </div> 
+    </section> 
+ 
+    <!-- Interests --> 
+    <section id="interests" class="section interests"> 
+      <div class="container"> 
+        <h2>Interests</h2> 
+        <p>I like coding. I enjoy making small games and trying to solve problems with code. I also like to sketch simple characters for my projects.</p> 
+        <div class="cards"> 
+          <article class="card"> 
+            <h3>Coding</h3> 
+            <p>Learning how to make things move on the screen and follow rules.</p> 
+          </article> 
+          <article class="card"> 
+            <h3>Games</h3> 
+            <p>Playing games helps me think of ideas for my own projects.</p> 
+          </article> 
+          <article class="card"> 
+            <h3>Learning C#</h3> 
+            <p>I want to learn C# next so I can make bigger projects and learn about real programming languages.</p> 
+          </article> 
+        </div> 
+      </div> 
+    </section> 
+ 
+    <!-- More Stuff --> 
+    <section id="projects" class="section projects"> 
+      <div class="container"> 
+        <h2>More Stuff</h2> 
+        <p>Play these projects:</p> 
+ 
+        <div class="project-grid"> 
+          <article class="project"> 
+            <h3><a href="flappy-bird.html" target="_blank">Flappy Bird</a></h3> 
+            <p>A sunny flappy bird game where you avoid pipes and try to get a high score.</p> 
+          </article> 
+        </div> 
+ 
+        <p class="small">Want to add more projects? You or your parent can edit the files in this repository anytime.</p> 
+      </div> 
+    </section> 
+ 
+    <!-- Blog --> 
+    <section id="blog" class="section blog"> 
+      <div class="container"> 
+        <h2>Blog</h2> 
+        <p>This opens in a new tab. Email check is a demo safety feature.</p> 
+        <button id="open-blog" class="btn">Open Blog</button> 
+      </div> 
+    </section> 
+ 
+    <!-- Hidden Content --> 
+    <section id="hidden-content" class="section hidden-content"> 
+      <div class="container"> 
+        <h2>Hidden Content</h2> 
+        <p>Enter the passcode to open the secret page.</p> 
+        <button id="open-hidden-content" class="btn" type="button">Open Hidden Content</button> 
+      </div> 
+    </section> 
+  </main> 
+ 
+  <!-- Footer --> 
+  <footer class="site-footer"> 
+    <div class="container footer-inner"> 
+      <p>Made by Damon (黄沐晨) — 2026. Built with HTML, CSS, and JavaScript.</p> 
+    </div> 
+  </footer> 
+ 
+  <script type="module" src="script.js"></script> 
+  <script src="floating-icons.js"></script> 
+ 
+  <script> 
+    // X key shortcut (existing behavior) 
+    document.addEventListener('keydown', function (event) { 
+      if (event.key.toLowerCase() === 'x') { 
+        const a = document.createElement('a'); 
+        a.href = 'hhhhhhhhhhhhh.html'; 
+        a.target = '_blank'; 
+        a.rel = 'noopener'; 
+        document.body.appendChild(a); 
+        a.click(); 
+        a.remove(); 
+      } 
+    }); 
+ 
+    // Blog in new tab with localStorage persistence 
+    document.getElementById('open-blog').addEventListener('click', function () { 
+      const blogWindow = window.open('', '_blank'); 
+      if (!blogWindow) { 
+        alert('Popup blocked. Please allow popups for this site.'); 
+        return; 
+      } 
+ 
+      const email = blogWindow.prompt('What is your email? This is a safety feature.') || ''; 
+      const isEditor = email.trim().toLowerCase() === 'househuntinghh@gmail.com'; 
+      const STORAGE_KEY = 'damon_blog_posts_v1'; 
+ 
+      // IMPORTANT: use opener storage so save/load always persists in your main site 
+      const storage = (blogWindow.opener && blogWindow.opener.localStorage) 
+        ? blogWindow.opener.localStorage 
+        : localStorage; 
+ 
+      const defaultPosts = [ 
+        { title: 'Welcome to my blog!', body: 'This is my first post. I like coding and building fun things.' }, 
+        { title: 'Today I learned', body: 'I learned how to make web pages with HTML, CSS, and JavaScript.' } 
+      ]; 
+ 
+      function escapeHtml(str) { 
+        return str 
+          .replaceAll('&', '&amp;') 
+          .replaceAll('<', '&lt;') 
+          .replaceAll('>', '&gt;') 
+          .replaceAll('"', '&quot;') 
+          .replaceAll("'", '&#39;'); 
+      } 
+ 
+      let posts = []; 
+      try { 
+        const saved = storage.getItem(STORAGE_KEY); 
+        posts = saved ? JSON.parse(saved) : defaultPosts; 
+        if (!Array.isArray(posts)) posts = defaultPosts; 
+      } catch { 
+        posts = defaultPosts; 
+      } 
+      storage.setItem(STORAGE_KEY, JSON.stringify(posts)); 
+ 
+      const postsHTML = posts.map(p => ` 
+        <article class="blog-post"> 
+          <h3>${escapeHtml(p.title || '')}</h3> 
+          <p>${escapeHtml(p.body || '')}</p> 
+        </article> 
+      `).join(''); 
+ 
+      blogWindow.document.write(` 
+        <!doctype html> 
+        <html lang="en"> 
+        <head> 
+          <meta charset="utf-8"> 
+          <meta name="viewport" content="width=device-width,initial-scale=1"> 
+          <title>Damon's Blog</title> 
+          <style> 
+            body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; line-height: 1.5; background: #0f1115; color: #e6e6e6; } 
+            h1, h2, h3 { margin: 0 0 8px; } 
+            .wrap { max-width: 800px; margin: 0 auto; } 
+            .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; margin-bottom: 12px; font-size: 12px; } 
+            .editor { background: #164e2f; color: #caffde; } 
+            .reader { background: #3a3f4b; color: #dfe4ff; } 
+            .blog-toolbar { margin: 12px 0 16px; display: flex; gap: 8px; flex-wrap: wrap; } 
+            input, textarea { width: 100%; box-sizing: border-box; margin: 6px 0 10px; padding: 10px; border-radius: 8px; border: 1px solid #555; background: #171a22; color: #fff; } 
+            button { padding: 10px 14px; border-radius: 8px; border: 0; cursor: pointer; background: #3b82f6; color: #fff; } 
+            .danger { background: #b91c1c; } 
+            .blog-list { display: grid; gap: 10px; margin-top: 10px; } 
+            .blog-post { padding: 12px; border: 1px solid #444; border-radius: 10px; background: #151925; } 
+            .small-note { font-size: 0.9rem; opacity: 0.85; } 
+            hr { border: 0; border-top: 1px solid #333; margin: 16px 0; } 
+          </style> 
+        </head> 
+        <body> 
+          <div class="wrap"> 
+            <h1>Damon's Blog</h1> 
+            <div class="badge ${isEditor ? 'editor' : 'reader'}"> 
+              ${isEditor ? 'Editor mode' : 'Read-only mode'} 
+            </div> 
+            <p class="small-note"> 
+              ${isEditor 
+                ? 'You can add posts. Readers on this browser will see them.' 
+                : 'Read-only mode. You can view all saved posts.'} 
+            </p> 
+ 
+            ${isEditor ? ` 
+              <hr /> 
+              <h2>Add a post</h2> 
+              <label>Title</label> 
+              <input id="newTitle" placeholder="Post title" /> 
+              <label>Body</label> 
+              <textarea id="newBody" rows="4" placeholder="Write your post..."></textarea> 
+              <div class="blog-toolbar"> 
+                <button id="addPostBtn">Add Post</button> 
+                <button id="clearPostsBtn" class="danger">Clear All Posts</button> 
+              </div> 
+            ` : ''} 
+ 
+            <hr /> 
+            <h2>Posts</h2> 
+            <div id="posts" class="blog-list">${postsHTML}</div> 
+          </div> 
+ 
+          <script> 
+            const isEditor = ${isEditor ? 'true' : 'false'}; 
+            const STORAGE_KEY = 'damon_blog_posts_v1'; 
+            const storage = (window.opener && window.opener.localStorage) 
+              ? window.opener.localStorage 
+              : localStorage; 
+ 
+            function escapeHtml(str) { 
+              return str 
+                .replaceAll('&', '&amp;') 
+                .replaceAll('<', '&lt;') 
+                .replaceAll('>', '&gt;') 
+                .replaceAll('"', '&quot;') 
+                .replaceAll("'", '&#39;'); 
+            } 
+ 
+            function renderPosts() { 
+              let posts = []; 
+              try { 
+                posts = JSON.parse(storage.getItem(STORAGE_KEY) || '[]'); 
+                if (!Array.isArray(posts)) posts = []; 
+              } catch { 
+                posts = []; 
+              } 
+ 
+              const container = document.getElementById('posts'); 
+              if (!posts.length) { 
+                container.innerHTML = '<p class="small-note">No posts yet.</p>'; 
+                return; 
+              } 
+ 
+              container.innerHTML = posts.map(p => ( 
+                '<article class="blog-post">' + 
+                  '<h3>' + escapeHtml(p.title || '') + '</h3>' + 
+                  '<p>' + escapeHtml(p.body || '') + '</p>' + 
+                '</article>' 
+              )).join(''); 
+            } 
+ 
+            renderPosts(); 
+ 
+            if (isEditor) { 
+              document.getElementById('addPostBtn').addEventListener('click', function () { 
+                const titleEl = document.getElementById('newTitle'); 
+                const bodyEl = document.getElementById('newBody'); 
+                const title = (titleEl.value || '').trim(); 
+                const body = (bodyEl.value || '').trim(); 
+ 
+                if (!title || !body) { 
+                  alert('Please enter both a title and body.'); 
+                  return; 
+                } 
+ 
+                let posts = []; 
+                try { 
+                  posts = JSON.parse(storage.getItem(STORAGE_KEY) || '[]'); 
+                  if (!Array.isArray(posts)) posts = []; 
+                } catch { 
+                  posts = []; 
+                } 
+ 
+                posts.unshift({ title, body }); 
+                storage.setItem(STORAGE_KEY, JSON.stringify(posts)); 
+ 
+                titleEl.value = ''; 
+                bodyEl.value = ''; 
+                renderPosts(); 
+              }); 
+ 
+              document.getElementById('clearPostsBtn').addEventListener('click', function () { 
+                if (!confirm('Delete all blog posts?')) return; 
+                storage.setItem(STORAGE_KEY, JSON.stringify([])); 
+                renderPosts(); 
+              }); 
+            } 
+          <\/script> 
+        </body> 
+        </html> 
+      `); 
+ 
+      blogWindow.document.close(); 
+    }); 
+ 
+    // Fallback hidden content gate (works even if module script fails) 
+    (function () { 
+      var hiddenBtn = document.getElementById('open-hidden-content'); 
+      if (!hiddenBtn) return; 
+ 
+      hiddenBtn.addEventListener('click', function () { 
+        var passcode = prompt('Enter passcode to access hidden content:') || ''; 
+        if (passcode === 'crystalclear') { 
+          // ADDED/CHANGED: Open downloads.html after correct passcode
+          window.location.href = '/ender/downloads.html'; 
+        } else { 
+          alert('Wrong passcode. Access denied.'); 
+          window.location.replace('about:blank'); 
+        } 
+      }); 
+    })(); 
+  </script> 
+</body> 
 </html>
+```
