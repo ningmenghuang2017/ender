@@ -5,6 +5,7 @@
   var EFFECT_CLASS = 'temporary-admin-visual-effect';
   var originalHeadingText = null;
   var headingEl = null;
+  var lastFocusedElement = null;
   var currentFontPercent = 100;
   var hiddenSelectors = {
     '#about': false,
@@ -18,6 +19,11 @@
     if (target.isContentEditable) return true;
     var tag = target.tagName ? target.tagName.toLowerCase() : '';
     return tag === 'input' || tag === 'textarea' || tag === 'select';
+  }
+
+  function isInteractiveTarget(target) {
+    if (!target || !(target instanceof Element)) return false;
+    return Boolean(target.closest('button, a, input, textarea, select, summary, [role="button"]'));
   }
 
   function ensureStyles() {
@@ -36,6 +42,7 @@
       '.temporary-admin-row input[type="text"]{flex:1;min-width:130px;background:#0f172a;color:#f9fafb;border:1px solid #4b5563;border-radius:8px;padding:7px 9px;}',
       '.temporary-admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}',
       '.temporary-admin-grid label{display:flex;gap:6px;align-items:center;font-size:.88rem;}',
+      '.temporary-admin-row .temporary-admin-input-label{font-size:.88rem;color:#e5e7eb;}',
       '.temporary-admin-divider{border-top:1px solid #374151;margin:10px 0;}',
       '.' + DARK_MODE_CLASS + '{background:#0b1220 !important;color:#f3f4f6 !important;}',
       '.' + DARK_MODE_CLASS + ' .site-header{background:rgba(15,23,42,.94) !important;}',
@@ -58,11 +65,18 @@
     var el = document.querySelector(selector);
     if (!el) return;
     if (hidden) {
+      if (!el.hasAttribute('data-temp-admin-prev-display')) {
+        el.setAttribute('data-temp-admin-prev-display', el.style.display || '');
+      }
       el.setAttribute('data-temp-admin-hidden', 'true');
+      el.setAttribute('aria-hidden', 'true');
       el.style.display = 'none';
     } else if (el.getAttribute('data-temp-admin-hidden') === 'true') {
-      el.style.display = '';
+      var previousDisplay = el.getAttribute('data-temp-admin-prev-display');
+      el.style.display = previousDisplay === null ? '' : previousDisplay;
       el.removeAttribute('data-temp-admin-hidden');
+      el.removeAttribute('data-temp-admin-prev-display');
+      el.removeAttribute('aria-hidden');
     }
   }
 
@@ -91,6 +105,10 @@
   function closePanel() {
     var panel = document.getElementById(PANEL_ID);
     if (panel) panel.remove();
+    if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+      lastFocusedElement.focus();
+    }
+    lastFocusedElement = null;
   }
 
   function syncPanelState() {
@@ -130,11 +148,13 @@
     panel.id = PANEL_ID;
     panel.className = 'temporary-admin-overlay';
     panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', 'Admin Panel Temporary');
+    panel.setAttribute('aria-modal', 'false');
+    panel.setAttribute('aria-labelledby', 'temporary-admin-title');
+    panel.setAttribute('tabindex', '-1');
     panel.innerHTML = [
       '<div class="temporary-admin-row" style="justify-content:space-between;align-items:flex-start;">',
       '  <div>',
-      '    <h2>Admin Panel (Temporary)</h2>',
+      '    <h2 id="temporary-admin-title">Admin Panel (Temporary)</h2>',
       '    <p>Changes are only for this page session and reset after reload.</p>',
       '  </div>',
       '  <button type="button" data-action="close" aria-label="Close admin panel">Close</button>',
@@ -157,7 +177,8 @@
       '  <label><input type="checkbox" data-selector="#blog"> Hide Blog</label>',
       '</div>',
       '<div class="temporary-admin-row">',
-      '  <input type="text" data-role="heading-input" placeholder="Temporary H1 text">',
+      '  <label class="temporary-admin-input-label" for="temporary-admin-heading-input">Heading text</label>',
+      '  <input id="temporary-admin-heading-input" type="text" data-role="heading-input" placeholder="Temporary H1 text">',
       '  <button type="button" data-action="heading-apply">Apply heading</button>',
       '  <button type="button" data-action="heading-reset">Reset heading</button>',
       '</div>',
@@ -172,7 +193,10 @@
       var action = target.getAttribute('data-action');
       if (!action) return;
 
-      if (action === 'close') closePanel();
+      if (action === 'close') {
+        closePanel();
+        return;
+      }
       if (action === 'dark-mode') {
         document.documentElement.classList.toggle(DARK_MODE_CLASS);
       }
@@ -194,8 +218,8 @@
       if (action === 'heading-apply') {
         var input = panel.querySelector('[data-role="heading-input"]');
         var h1 = getHeading();
-        if (input && h1 && input.value.trim()) {
-          h1.textContent = input.value.trim();
+        if (input && h1) {
+          h1.textContent = input.value;
         }
       }
       if (action === 'heading-reset') {
@@ -220,6 +244,13 @@
 
     document.body.appendChild(panel);
     syncPanelState();
+    var closeButton = panel.querySelector('[data-action="close"]');
+    lastFocusedElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (closeButton && typeof closeButton.focus === 'function') {
+      closeButton.focus();
+    } else {
+      panel.focus();
+    }
   }
 
   function togglePanel() {
@@ -232,8 +263,13 @@
 
   document.addEventListener('keydown', function (event) {
     if (event.defaultPrevented || event.repeat) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (isTypingTarget(event.target)) return;
+    var panel = document.getElementById(PANEL_ID);
+    var inPanel = panel && event.target instanceof Node ? panel.contains(event.target) : false;
+    if (!inPanel && isInteractiveTarget(event.target)) return;
     if ((event.key || '').toLowerCase() !== 'z') return;
+    event.preventDefault();
     togglePanel();
   });
 })();
