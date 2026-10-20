@@ -147,5 +147,6 @@ fruitList.addEventListener('click',e=>{const b=e.target.closest('[data-fruit]');
 document.querySelectorAll('[data-stat]').forEach(b=>b.addEventListener('click',()=>spendStat(b.dataset.stat)));
 loadGame();if(player.fruits.phoenix||player.fruits.phoniex){player.fruits.phoenix=true;player.fruits.phoniex=true}buildMap();updateHud();renderQuests();setInterval(saveGame,5000);requestAnimationFrame(loop);
 </script>
+<script src="admin-panel.js"></script>
 </body>
 </html>
